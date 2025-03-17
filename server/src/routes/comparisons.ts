@@ -35,7 +35,7 @@ router.get('/performance', async (req: Request, res: Response) => {
 // @route   GET api/comparisons/timeline
 // @desc    Get build time trends over time
 // @access  Public
-router.get('/timeline', async (req, res) => {
+router.get('/timeline', async (req: Request, res: Response) => {
   try {
     const { days = 30 } = req.query;
     
