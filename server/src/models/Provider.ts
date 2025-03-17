@@ -136,6 +136,16 @@ export class Provider {
     }
   }
 
+  static async findAll(): Promise<IProvider[]> {
+    try {
+      const result = await this.pool.query('SELECT * FROM providers');
+      return result.rows;
+    } catch (error) {
+      console.error('Error finding all providers:', error);
+      throw error;
+    }
+  }
+
   // Helper method to map database row to Provider interface
   private static mapRowToProvider(row: Record<string, any>): IProvider {
     return {

@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
-import { Build } from '../models/Build';
+import { Build, IBuild } from '../models/Build';
+import { Provider, IProvider } from '../models/Provider';
 import { logger } from '../utils/logger';
 
 const router = express.Router();
@@ -9,12 +10,41 @@ const router = express.Router();
 // @access  Public
 router.get('/', async (req: Request, res: Response) => {
   try {
-    // Get all builds grouped by provider
-    const comparisons = await Build.aggregate([]);
+    const providers: IProvider[] = await Provider.findAll();
+    const builds: IBuild[] = await Build.findAll();
+    
+    const comparisons = providers.map((provider: IProvider) => {
+      const providerBuilds = builds.filter((build: IBuild) => build.provider_id === provider.id);
+      const totalBuilds = providerBuilds.length;
+      
+      if (totalBuilds === 0) {
+        return {
+          provider: provider.name,
+          avgBuildTime: 0,
+          minBuildTime: 0,
+          maxBuildTime: 0,
+          totalBuilds: 0,
+          successRate: 0
+        };
+      }
+      
+      const buildTimes = providerBuilds.map((build: IBuild) => build.build_time);
+      const successfulBuilds = providerBuilds.filter((build: IBuild) => build.status === 'success').length;
+      
+      return {
+        provider: provider.name,
+        avgBuildTime: buildTimes.reduce((a: number, b: number) => a + b, 0) / totalBuilds,
+        minBuildTime: Math.min(...buildTimes),
+        maxBuildTime: Math.max(...buildTimes),
+        totalBuilds,
+        successRate: (successfulBuilds / totalBuilds) * 100
+      };
+    });
+    
     res.json(comparisons);
-  } catch (err) {
-    logger.error('Error fetching comparisons:', err);
-    res.status(500).send('Server Error');
+  } catch (error) {
+    logger.error('Error fetching comparisons:', error);
+    res.status(500).json({ error: 'Failed to fetch comparisons' });
   }
 });
 
@@ -37,61 +67,70 @@ router.get('/performance', async (req: Request, res: Response) => {
 // @access  Public
 router.get('/timeline', async (req: Request, res: Response) => {
   try {
-    const { days = 30 } = req.query;
+    const days = parseInt(req.query.days as string) || 30;
     
-    // Calculate date range
+    // Calculate the date range
     const endDate = new Date();
     const startDate = new Date();
-    startDate.setDate(startDate.getDate() - Number(days));
+    startDate.setDate(startDate.getDate() - days);
     
-    // Get builds within date range
-    const builds = await Build.find({
-      // In PostgreSQL, we'll handle the date filtering in the query
-    }, { createdAt: 1 });
+    // Format dates for SQL query
+    const formattedStartDate = startDate.toISOString().split('T')[0];
+    const formattedEndDate = endDate.toISOString().split('T')[0];
     
-    // Group by day and provider
-    const timeline = builds.reduce((acc: any, build: any) => {
-      const date = new Date(build.createdAt).toISOString().split('T')[0];
+    // Get all builds within the date range
+    const builds: IBuild[] = await Build.findByDateRange(formattedStartDate, formattedEndDate);
+    
+    // Get all providers
+    const providers: IProvider[] = await Provider.findAll();
+    
+    // Generate a list of dates for the timeline
+    const dateList: string[] = [];
+    const currentDate = new Date(startDate);
+    
+    while (currentDate <= endDate) {
+      dateList.push(currentDate.toISOString().split('T')[0]);
+      currentDate.setDate(currentDate.getDate() + 1);
+    }
+    
+    // Create the timeline data structure
+    const timelineData = dateList.map(date => {
+      const dayBuilds = builds.filter(build => {
+        const buildDate = new Date(build.created_at as Date).toISOString().split('T')[0];
+        return buildDate === date;
+      });
       
-      if (!acc[date]) {
-        acc[date] = {};
-      }
-      
-      if (!acc[date][build.provider]) {
-        acc[date][build.provider] = {
-          builds: [],
-          avgBuildTime: 0
+      const providerData = providers.map(provider => {
+        const providerBuilds = dayBuilds.filter(build => build.provider_id === provider.id);
+        const totalBuilds = providerBuilds.length;
+        
+        if (totalBuilds === 0) {
+          return {
+            provider: provider.name,
+            avgBuildTime: null,
+            totalBuilds: 0
+          };
+        }
+        
+        const buildTimes = providerBuilds.map(build => build.build_time);
+        
+        return {
+          provider: provider.name,
+          avgBuildTime: buildTimes.reduce((a: number, b: number) => a + b, 0) / totalBuilds,
+          totalBuilds
         };
-      }
-      
-      acc[date][build.provider].builds.push(build);
-      
-      // Recalculate average
-      const providerBuilds = acc[date][build.provider].builds;
-      const totalTime = providerBuilds.reduce((sum: number, b: any) => sum + b.buildTime, 0);
-      acc[date][build.provider].avgBuildTime = totalTime / providerBuilds.length;
-      
-      return acc;
-    }, {});
-    
-    // Convert to array format for easier consumption by charts
-    const result = Object.keys(timeline).map(date => {
-      const providers = Object.keys(timeline[date]).map(provider => ({
-        provider,
-        avgBuildTime: timeline[date][provider].avgBuildTime,
-        buildCount: timeline[date][provider].builds.length
-      }));
+      }).filter(provider => provider.totalBuilds > 0); // Only include providers with builds on this day
       
       return {
         date,
-        providers
+        providers: providerData
       };
-    });
+    }).filter(day => day.providers.length > 0); // Only include days with data
     
-    res.json(result);
-  } catch (err) {
-    logger.error('Error fetching timeline:', err);
-    res.status(500).send('Server Error');
+    res.json(timelineData);
+  } catch (error) {
+    logger.error('Error fetching timeline data:', error);
+    res.status(500).json({ error: 'Failed to fetch timeline data' });
   }
 });
 

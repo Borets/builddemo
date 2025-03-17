@@ -2,14 +2,20 @@ import { Pool, PoolClient, QueryResult } from 'pg';
 
 export interface IBuild {
   id?: number;
-  provider: string;
-  buildTime: number;
-  startTime: Date;
-  endTime: Date;
-  success: boolean;
+  provider_id: number;
+  provider?: string; // For backward compatibility
+  build_time: number;
+  buildTime?: number; // For backward compatibility
+  start_time: Date;
+  startTime?: Date; // For backward compatibility
+  end_time: Date;
+  endTime?: Date; // For backward compatibility
+  status: string;
+  success?: boolean; // For backward compatibility
   logs?: string;
   metadata?: Record<string, any>;
-  createdAt?: Date;
+  created_at?: Date;
+  createdAt?: Date; // For backward compatibility
 }
 
 export class Build {
@@ -135,6 +141,31 @@ export class Build {
     }
   }
 
+  static async findAll(): Promise<IBuild[]> {
+    try {
+      const result = await this.pool.query('SELECT * FROM builds');
+      return result.rows;
+    } catch (error) {
+      console.error('Error finding all builds:', error);
+      throw error;
+    }
+  }
+
+  static async findByDateRange(startDate: string, endDate: string): Promise<IBuild[]> {
+    try {
+      const query = `
+        SELECT * FROM builds 
+        WHERE created_at >= $1 AND created_at <= $2
+        ORDER BY created_at ASC
+      `;
+      const result = await this.pool.query(query, [startDate, endDate]);
+      return result.rows;
+    } catch (error) {
+      console.error('Error finding builds by date range:', error);
+      throw error;
+    }
+  }
+
   // Helper method to convert camelCase to snake_case
   private static convertToSnakeCase(str: string): string {
     return str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
@@ -144,13 +175,19 @@ export class Build {
   private static mapRowToBuild(row: Record<string, any>): IBuild {
     return {
       id: row.id,
+      provider_id: row.provider_id,
       provider: row.provider,
+      build_time: parseFloat(row.build_time),
       buildTime: parseFloat(row.build_time),
+      start_time: new Date(row.start_time),
       startTime: new Date(row.start_time),
+      end_time: new Date(row.end_time),
       endTime: new Date(row.end_time),
+      status: row.status,
       success: row.success,
       logs: row.logs,
       metadata: row.metadata,
+      created_at: new Date(row.created_at),
       createdAt: new Date(row.created_at)
     };
   }
