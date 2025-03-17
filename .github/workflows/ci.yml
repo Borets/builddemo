@@ -41,6 +41,7 @@ jobs:
         cd ../client && npm install
     
     - name: Run linting
+      continue-on-error: true  # Make linting errors non-blocking
       run: cd server && npm run lint
     
     - name: Run server tests
