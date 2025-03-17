@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient, QueryResult } from 'pg';
 
 export interface IProvider {
   id?: number;
@@ -129,7 +129,7 @@ export class Provider {
   static async deleteById(id: string): Promise<boolean> {
     try {
       const result = await this.pool.query('DELETE FROM providers WHERE id = $1 RETURNING id', [id]);
-      return result.rowCount > 0;
+      return result.rowCount ? result.rowCount > 0 : false;
     } catch (error) {
       console.error('Error deleting provider:', error);
       throw error;
@@ -137,7 +137,7 @@ export class Provider {
   }
 
   // Helper method to map database row to Provider interface
-  private static mapRowToProvider(row: any): IProvider {
+  private static mapRowToProvider(row: Record<string, any>): IProvider {
     return {
       id: row.id,
       name: row.name,

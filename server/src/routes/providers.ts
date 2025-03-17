@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { Provider } from '../models/Provider';
 import { logger } from '../utils/logger';
 
@@ -7,7 +7,7 @@ const router = express.Router();
 // @route   GET api/providers
 // @desc    Get all providers
 // @access  Public
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     const providers = await Provider.find();
     res.json(providers);
@@ -20,7 +20,7 @@ router.get('/', async (req, res) => {
 // @route   GET api/providers/:id
 // @desc    Get provider by ID
 // @access  Public
-router.get('/:id', async (req, res) => {
+router.get('/:id', async (req: Request, res: Response) => {
   try {
     const provider = await Provider.findById(req.params.id);
     
@@ -36,27 +36,13 @@ router.get('/:id', async (req, res) => {
 });
 
 // @route   POST api/providers
-// @desc    Create a provider
+// @desc    Create a new provider
 // @access  Public
-router.post('/', async (req, res) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
-    const {
-      name,
-      description,
-      apiKey,
-      apiEndpoint,
-      config
-    } = req.body;
-    
-    const newProvider = await Provider.create({
-      name,
-      description,
-      apiKey,
-      apiEndpoint,
-      config
-    });
-    
-    res.json(newProvider);
+    const providerData = req.body;
+    const provider = await Provider.create(providerData);
+    res.status(201).json(provider);
   } catch (err) {
     logger.error('Error creating provider:', err);
     res.status(500).send('Server Error');
@@ -66,25 +52,10 @@ router.post('/', async (req, res) => {
 // @route   PUT api/providers/:id
 // @desc    Update a provider
 // @access  Public
-router.put('/:id', async (req, res) => {
+router.put('/:id', async (req: Request, res: Response) => {
   try {
-    const {
-      name,
-      description,
-      apiKey,
-      apiEndpoint,
-      config
-    } = req.body;
-    
-    // Build provider object
-    const providerFields: Partial<any> = {};
-    if (name) providerFields.name = name;
-    if (description) providerFields.description = description;
-    if (apiKey) providerFields.apiKey = apiKey;
-    if (apiEndpoint) providerFields.apiEndpoint = apiEndpoint;
-    if (config) providerFields.config = config;
-    
-    const provider = await Provider.findByIdAndUpdate(req.params.id, providerFields);
+    const updateData = req.body;
+    const provider = await Provider.findByIdAndUpdate(req.params.id, updateData);
     
     if (!provider) {
       return res.status(404).json({ msg: 'Provider not found' });
@@ -100,7 +71,7 @@ router.put('/:id', async (req, res) => {
 // @route   DELETE api/providers/:id
 // @desc    Delete a provider
 // @access  Public
-router.delete('/:id', async (req, res) => {
+router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const success = await Provider.deleteById(req.params.id);
     
@@ -108,7 +79,7 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ msg: 'Provider not found' });
     }
     
-    res.json({ msg: 'Provider removed' });
+    res.json({ msg: 'Provider deleted' });
   } catch (err) {
     logger.error('Error deleting provider:', err);
     res.status(500).send('Server Error');

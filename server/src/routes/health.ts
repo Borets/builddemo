@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { logger } from '../utils/logger';
 
 const router = express.Router();
@@ -6,7 +6,7 @@ const router = express.Router();
 // @route   GET api/health
 // @desc    Health check endpoint
 // @access  Public
-router.get('/', (req, res) => {
+router.get('/', (req: Request, res: Response) => {
   logger.debug('Health check requested');
   
   // Return basic health information

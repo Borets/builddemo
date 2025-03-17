@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { Build } from '../models/Build';
 import { logger } from '../utils/logger';
 
@@ -7,13 +7,27 @@ const router = express.Router();
 // @route   GET api/comparisons
 // @desc    Get build comparisons across providers
 // @access  Public
-router.get('/', async (req, res) => {
+router.get('/', async (req: Request, res: Response) => {
   try {
     // Get all builds grouped by provider
     const comparisons = await Build.aggregate([]);
     res.json(comparisons);
   } catch (err) {
     logger.error('Error fetching comparisons:', err);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   GET api/comparisons/performance
+// @desc    Get performance comparison between providers
+// @access  Public
+router.get('/performance', async (req: Request, res: Response) => {
+  try {
+    // Get performance metrics for each provider
+    const performance = await Build.aggregate([]);
+    res.json(performance);
+  } catch (err) {
+    logger.error('Error fetching performance data:', err);
     res.status(500).send('Server Error');
   }
 });

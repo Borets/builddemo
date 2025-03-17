@@ -1,4 +1,4 @@
-import { Pool } from 'pg';
+import { Pool, PoolClient, QueryResult } from 'pg';
 
 export interface IBuild {
   id?: number;
@@ -93,7 +93,7 @@ export class Build {
   static async deleteById(id: string): Promise<boolean> {
     try {
       const result = await this.pool.query('DELETE FROM builds WHERE id = $1 RETURNING id', [id]);
-      return result.rowCount > 0;
+      return result.rowCount ? result.rowCount > 0 : false;
     } catch (error) {
       console.error('Error deleting build:', error);
       throw error;
@@ -141,7 +141,7 @@ export class Build {
   }
 
   // Helper method to map database row to Build interface
-  private static mapRowToBuild(row: any): IBuild {
+  private static mapRowToBuild(row: Record<string, any>): IBuild {
     return {
       id: row.id,
       provider: row.provider,
