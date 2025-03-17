@@ -1,5 +1,6 @@
 import express, { Request, Response } from 'express';
 import { Build } from '../models/Build';
+import { BuildService } from '../services/BuildService';
 import { logger } from '../utils/logger';
 
 const router = express.Router();
@@ -14,7 +15,7 @@ router.get('/', async (req: Request, res: Response) => {
     res.json(builds);
   } catch (err) {
     logger.error('Error fetching builds:', err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ error: 'Failed to fetch builds' });
   }
 });
 
@@ -25,12 +26,12 @@ router.get('/:id', async (req: Request, res: Response) => {
   try {
     const build = await Build.findById(req.params.id);
     if (!build) {
-      return res.status(404).json({ msg: 'Build not found' });
+      return res.status(404).json({ error: 'Build not found' });
     }
     res.json(build);
   } catch (err) {
     logger.error('Error fetching build:', err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ error: 'Failed to fetch build' });
   }
 });
 
@@ -40,11 +41,11 @@ router.get('/:id', async (req: Request, res: Response) => {
 router.post('/', async (req: Request, res: Response) => {
   try {
     const buildData = req.body;
-    const build = await Build.create(buildData);
+    const build = await BuildService.recordBuild(buildData);
     res.status(201).json(build);
   } catch (err) {
     logger.error('Error creating build:', err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ error: 'Failed to create build' });
   }
 });
 
@@ -55,12 +56,38 @@ router.delete('/:id', async (req: Request, res: Response) => {
   try {
     const success = await Build.deleteById(req.params.id);
     if (!success) {
-      return res.status(404).json({ msg: 'Build not found' });
+      return res.status(404).json({ error: 'Build not found' });
     }
-    res.json({ msg: 'Build deleted' });
+    res.json({ message: 'Build deleted successfully' });
   } catch (err) {
     logger.error('Error deleting build:', err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ error: 'Failed to delete build' });
+  }
+});
+
+// @route   GET api/builds/provider/:name
+// @desc    Fetch builds from a specific provider
+// @access  Public
+router.get('/provider/:name', async (req: Request, res: Response) => {
+  try {
+    const providerName = req.params.name;
+    const builds = await BuildService.fetchBuildsFromProvider(providerName);
+    
+    if (builds.length === 0) {
+      return res.status(200).json({ 
+        message: `No builds found for provider ${providerName}`,
+        builds: []
+      });
+    }
+    
+    res.json({
+      message: `Successfully fetched builds from ${providerName}`,
+      count: builds.length,
+      builds
+    });
+  } catch (err) {
+    logger.error(`Error fetching builds from provider ${req.params.name}:`, err);
+    res.status(500).json({ error: 'Failed to fetch builds from provider' });
   }
 });
 

@@ -27,16 +27,27 @@ services:
     env: node
     schedule: "0 0 * * *"  # Run daily at midnight
     buildCommand: npm install
-    startCommand: node scripts/compare-providers.js
+    startCommand: cd server && npm run fetch-builds
     envVars:
       - key: NODE_ENV
         value: production
-      - key: API_ENDPOINT
-        value: https://build-performance-app.onrender.com/api/builds
       - key: DATABASE_URL
         fromDatabase:
           name: build-performance-db
           property: connectionString
+      # Provider API Keys - Add your actual API keys in the Render dashboard
+      - key: RENDER_ENABLED
+        value: "true"
+      - key: RENDER_API_KEY
+        value: ""  # Set this in the Render dashboard
+      - key: VERCEL_ENABLED
+        value: "false"
+      - key: NETLIFY_ENABLED
+        value: "false"
+      - key: AWS_AMPLIFY_ENABLED
+        value: "false"
+      - key: GITHUB_PAGES_ENABLED
+        value: "false"
     # Specify Node.js version
     nodeVersion: 18.x
 

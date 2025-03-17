@@ -8,30 +8,31 @@ import {
   Card, 
   CardContent, 
   CardActions,
-  TextField,
+  Chip,
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
   DialogActions,
   IconButton,
   Snackbar,
-  Alert
+  Alert,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemIcon,
+  Divider
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import InfoIcon from '@mui/icons-material/Info';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CancelIcon from '@mui/icons-material/Cancel';
+import SettingsIcon from '@mui/icons-material/Settings';
 import axios from 'axios';
 
 const Providers = () => {
   const [providers, setProviders] = useState([]);
   const [open, setOpen] = useState(false);
-  const [editMode, setEditMode] = useState(false);
-  const [currentProvider, setCurrentProvider] = useState({
-    name: '',
-    description: '',
-    apiKey: '',
-    apiEndpoint: ''
-  });
+  const [selectedProvider, setSelectedProvider] = useState(null);
   const [snackbar, setSnackbar] = useState({
     open: false,
     message: '',
@@ -50,86 +51,37 @@ const Providers = () => {
       console.error('Error fetching providers:', error);
       setSnackbar({
         open: true,
-        message: 'Failed to load providers',
+        message: 'Failed to fetch providers',
         severity: 'error'
       });
     }
   };
 
-  const handleOpen = (provider = null) => {
-    if (provider) {
-      setCurrentProvider(provider);
-      setEditMode(true);
-    } else {
-      setCurrentProvider({
-        name: '',
-        description: '',
-        apiKey: '',
-        apiEndpoint: ''
-      });
-      setEditMode(false);
-    }
+  const handleOpenInfo = (provider) => {
+    setSelectedProvider(provider);
     setOpen(true);
   };
 
   const handleClose = () => {
     setOpen(false);
+    setSelectedProvider(null);
   };
 
-  const handleChange = (e) => {
-    setCurrentProvider({
-      ...currentProvider,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const handleSubmit = async () => {
+  const validateProvider = async (name) => {
     try {
-      if (editMode) {
-        await axios.put(`/api/providers/${currentProvider.id}`, currentProvider);
-        setSnackbar({
-          open: true,
-          message: 'Provider updated successfully',
-          severity: 'success'
-        });
-      } else {
-        await axios.post('/api/providers', currentProvider);
-        setSnackbar({
-          open: true,
-          message: 'Provider added successfully',
-          severity: 'success'
-        });
-      }
-      fetchProviders();
-      handleClose();
-    } catch (error) {
-      console.error('Error saving provider:', error);
+      const res = await axios.get(`/api/providers/${name}/validate`);
       setSnackbar({
         open: true,
-        message: 'Failed to save provider',
+        message: res.data.message,
+        severity: res.data.valid ? 'success' : 'warning'
+      });
+    } catch (error) {
+      console.error('Error validating provider:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to validate provider credentials',
         severity: 'error'
       });
-    }
-  };
-
-  const handleDelete = async (id) => {
-    if (window.confirm('Are you sure you want to delete this provider?')) {
-      try {
-        await axios.delete(`/api/providers/${id}`);
-        fetchProviders();
-        setSnackbar({
-          open: true,
-          message: 'Provider deleted successfully',
-          severity: 'success'
-        });
-      } catch (error) {
-        console.error('Error deleting provider:', error);
-        setSnackbar({
-          open: true,
-          message: 'Failed to delete provider',
-          severity: 'error'
-        });
-      }
     }
   };
 
@@ -146,115 +98,135 @@ const Providers = () => {
         <Typography variant="h4" component="h1" gutterBottom>
           Cloud Providers
         </Typography>
-        <Button 
-          variant="contained" 
-          color="primary" 
-          startIcon={<AddIcon />}
-          onClick={() => handleOpen()}
-        >
-          Add Provider
-        </Button>
       </Box>
 
+      <Paper sx={{ p: 3, mb: 4 }}>
+        <Typography variant="h6" gutterBottom>
+          Provider Configuration
+        </Typography>
+        <Typography variant="body1" paragraph>
+          Providers are now configured securely via environment variables. This approach enhances security by keeping sensitive API keys out of the database and UI.
+        </Typography>
+        <Typography variant="body1" paragraph>
+          To add or modify providers, update the environment variables in your deployment environment or .env file.
+        </Typography>
+        <List>
+          <ListItem>
+            <ListItemIcon>
+              <SettingsIcon />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Environment Variables" 
+              secondary="Set provider-specific environment variables like PROVIDER_ENABLED, PROVIDER_API_KEY, etc."
+            />
+          </ListItem>
+          <Divider component="li" />
+          <ListItem>
+            <ListItemIcon>
+              <InfoIcon />
+            </ListItemIcon>
+            <ListItemText 
+              primary="Configuration File" 
+              secondary="The server loads provider configuration from environment variables at startup."
+            />
+          </ListItem>
+        </List>
+      </Paper>
+
+      <Typography variant="h5" gutterBottom mt={4}>
+        Available Providers
+      </Typography>
+      
       <Grid container spacing={3}>
         {providers.length > 0 ? (
           providers.map((provider) => (
-            <Grid item xs={12} sm={6} md={4} key={provider.id}>
+            <Grid item xs={12} sm={6} md={4} key={provider.name}>
               <Card>
                 <CardContent>
-                  <Typography variant="h6" component="h2">
-                    {provider.name}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary" component="p">
-                    {provider.description || 'No description provided'}
-                  </Typography>
-                  <Box mt={2}>
-                    <Typography variant="body2">
-                      <strong>API Endpoint:</strong> {provider.apiEndpoint || 'N/A'}
+                  <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+                    <Typography variant="h6" component="div">
+                      {provider.name}
                     </Typography>
+                    <Chip 
+                      label={provider.enabled ? "Enabled" : "Disabled"} 
+                      color={provider.enabled ? "success" : "default"}
+                      size="small"
+                    />
                   </Box>
+                  <Typography variant="body2" color="text.secondary">
+                    {provider.description || "No description available"}
+                  </Typography>
                 </CardContent>
                 <CardActions>
-                  <IconButton 
+                  <Button 
                     size="small" 
-                    color="primary"
-                    onClick={() => handleOpen(provider)}
+                    startIcon={<InfoIcon />}
+                    onClick={() => handleOpenInfo(provider)}
                   >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton 
-                    size="small" 
-                    color="error"
-                    onClick={() => handleDelete(provider.id)}
-                  >
-                    <DeleteIcon />
-                  </IconButton>
+                    Info
+                  </Button>
+                  {provider.enabled && (
+                    <Button 
+                      size="small" 
+                      color="primary"
+                      onClick={() => validateProvider(provider.name)}
+                    >
+                      Validate Credentials
+                    </Button>
+                  )}
                 </CardActions>
               </Card>
             </Grid>
           ))
         ) : (
           <Grid item xs={12}>
-            <Paper sx={{ p: 3, textAlign: 'center' }}>
-              <Typography variant="body1">
-                No providers found. Add a provider to get started.
-              </Typography>
-            </Paper>
+            <Alert severity="info">
+              No providers configured. Please set up provider environment variables.
+            </Alert>
           </Grid>
         )}
       </Grid>
 
-      {/* Provider Form Dialog */}
-      <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-        <DialogTitle>{editMode ? 'Edit Provider' : 'Add Provider'}</DialogTitle>
+      {/* Provider Info Dialog */}
+      <Dialog open={open} onClose={handleClose}>
+        <DialogTitle>
+          {selectedProvider?.name} Details
+        </DialogTitle>
         <DialogContent>
-          <Box component="form" sx={{ mt: 1 }}>
-            <TextField
-              margin="normal"
-              required
-              fullWidth
-              id="name"
-              label="Provider Name"
-              name="name"
-              value={currentProvider.name}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              fullWidth
-              id="description"
-              label="Description"
-              name="description"
-              multiline
-              rows={3}
-              value={currentProvider.description || ''}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              fullWidth
-              id="apiKey"
-              label="API Key"
-              name="apiKey"
-              value={currentProvider.apiKey || ''}
-              onChange={handleChange}
-            />
-            <TextField
-              margin="normal"
-              fullWidth
-              id="apiEndpoint"
-              label="API Endpoint"
-              name="apiEndpoint"
-              value={currentProvider.apiEndpoint || ''}
-              onChange={handleChange}
-            />
-          </Box>
+          <DialogContentText>
+            This provider is {selectedProvider?.enabled ? 'enabled' : 'disabled'} in your configuration.
+          </DialogContentText>
+          <List>
+            <ListItem>
+              <ListItemIcon>
+                {selectedProvider?.enabled ? <CheckCircleIcon color="success" /> : <CancelIcon color="disabled" />}
+              </ListItemIcon>
+              <ListItemText primary="Status" secondary={selectedProvider?.enabled ? 'Enabled' : 'Disabled'} />
+            </ListItem>
+            <ListItem>
+              <ListItemText primary="Description" secondary={selectedProvider?.description || 'No description available'} />
+            </ListItem>
+            <ListItem>
+              <ListItemText 
+                primary="Configuration" 
+                secondary="API keys and endpoints are configured via environment variables for security."
+              />
+            </ListItem>
+          </List>
         </DialogContent>
         <DialogActions>
-          <Button onClick={handleClose}>Cancel</Button>
-          <Button onClick={handleSubmit} variant="contained" color="primary">
-            {editMode ? 'Update' : 'Add'}
-          </Button>
+          <Button onClick={handleClose}>Close</Button>
+          {selectedProvider?.enabled && (
+            <Button 
+              onClick={() => {
+                validateProvider(selectedProvider.name);
+                handleClose();
+              }} 
+              color="primary"
+            >
+              Validate Credentials
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 

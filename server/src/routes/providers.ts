@@ -1,89 +1,75 @@
 import express, { Request, Response } from 'express';
-import { Provider } from '../models/Provider';
+import { ProviderService } from '../services/ProviderService';
 import { logger } from '../utils/logger';
 
 const router = express.Router();
 
 // @route   GET api/providers
-// @desc    Get all providers
+// @desc    Get all providers from config
 // @access  Public
 router.get('/', async (req: Request, res: Response) => {
   try {
-    const providers = await Provider.find();
-    res.json(providers);
+    const providers = await ProviderService.getAllProviders();
+    
+    // Remove sensitive information before sending to client
+    const sanitizedProviders = providers.map(provider => ({
+      name: provider.name,
+      description: provider.description,
+      enabled: provider.enabled,
+      // Don't include apiKey or other sensitive config details
+    }));
+    
+    res.json(sanitizedProviders);
   } catch (err) {
     logger.error('Error fetching providers:', err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ error: 'Failed to fetch providers' });
   }
 });
 
-// @route   GET api/providers/:id
-// @desc    Get provider by ID
+// @route   GET api/providers/:name
+// @desc    Get provider by name
 // @access  Public
-router.get('/:id', async (req: Request, res: Response) => {
+router.get('/:name', async (req: Request, res: Response) => {
   try {
-    const provider = await Provider.findById(req.params.id);
+    const provider = await ProviderService.getProviderByName(req.params.name);
     
     if (!provider) {
-      return res.status(404).json({ msg: 'Provider not found' });
+      return res.status(404).json({ error: 'Provider not found' });
     }
     
-    res.json(provider);
+    // Remove sensitive information before sending to client
+    const sanitizedProvider = {
+      name: provider.name,
+      description: provider.description,
+      enabled: provider.enabled,
+      // Don't include apiKey or other sensitive config details
+    };
+    
+    res.json(sanitizedProvider);
   } catch (err) {
     logger.error('Error fetching provider:', err);
-    res.status(500).send('Server Error');
+    res.status(500).json({ error: 'Failed to fetch provider' });
   }
 });
 
-// @route   POST api/providers
-// @desc    Create a new provider
+// @route   GET api/providers/:name/validate
+// @desc    Validate provider credentials
 // @access  Public
-router.post('/', async (req: Request, res: Response) => {
+router.get('/:name/validate', async (req: Request, res: Response) => {
   try {
-    const providerData = req.body;
-    const provider = await Provider.create(providerData);
-    res.status(201).json(provider);
+    const isValid = await ProviderService.validateCredentials(req.params.name);
+    
+    res.json({ 
+      name: req.params.name,
+      valid: isValid,
+      message: isValid ? 'Credentials are valid' : 'Invalid or missing credentials'
+    });
   } catch (err) {
-    logger.error('Error creating provider:', err);
-    res.status(500).send('Server Error');
+    logger.error('Error validating provider credentials:', err);
+    res.status(500).json({ error: 'Failed to validate provider credentials' });
   }
 });
 
-// @route   PUT api/providers/:id
-// @desc    Update a provider
-// @access  Public
-router.put('/:id', async (req: Request, res: Response) => {
-  try {
-    const updateData = req.body;
-    const provider = await Provider.findByIdAndUpdate(req.params.id, updateData);
-    
-    if (!provider) {
-      return res.status(404).json({ msg: 'Provider not found' });
-    }
-    
-    res.json(provider);
-  } catch (err) {
-    logger.error('Error updating provider:', err);
-    res.status(500).send('Server Error');
-  }
-});
-
-// @route   DELETE api/providers/:id
-// @desc    Delete a provider
-// @access  Public
-router.delete('/:id', async (req: Request, res: Response) => {
-  try {
-    const success = await Provider.deleteById(req.params.id);
-    
-    if (!success) {
-      return res.status(404).json({ msg: 'Provider not found' });
-    }
-    
-    res.json({ msg: 'Provider deleted' });
-  } catch (err) {
-    logger.error('Error deleting provider:', err);
-    res.status(500).send('Server Error');
-  }
-});
+// Note: POST, PUT, and DELETE endpoints are removed since providers are now configured via config file
 
 export default router; 
