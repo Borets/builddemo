@@ -42,6 +42,7 @@ node index.js --service-id srv-your-service-id
 - `-n, --number <count>`: Number of deployments to analyze (default: 10)
 - `-o, --output <file>`: Save the report to a JSON file
 - `-d, --debug`: Show debug information to help troubleshoot API issues
+- `-l, --logs`: Fetch and analyze build logs to extract build-only time (separate from deployment overhead)
 
 ### Examples
 
@@ -65,6 +66,16 @@ Debug API issues:
 node index.js --service-id srv-abc123xyz --debug
 ```
 
+Analyze deployments with build-only times:
+```bash
+node index.js --service-id srv-abc123xyz --logs
+```
+
+Analyze deployments with build-only times and save to file:
+```bash
+node index.js --service-id srv-abc123xyz --logs --output deploy-report.json
+```
+
 ## Getting Your Render API Key
 
 1. Go to your Render Dashboard
@@ -81,6 +92,16 @@ https://dashboard.render.com/web/srv-abc123xyz
                                   ^^^^^^^^^^^^
                                   This is your service ID
 ```
+
+## Understanding Build Time vs Build-Only Time
+
+The script reports two different time measurements for your builds:
+
+1. **Total Time**: The total time from when a deployment was initiated to when it completed, including the entire process (cloning, dependency installation, building, and deployment).
+
+2. **Build-Only Time**: When using the `--logs` option, the script extracts the time between the "Running build command" message and the "Build successful" message in the logs. This represents just the time spent on the build process itself, excluding git operations, dependency caching, and deployment steps.
+
+The difference between these times represents the overhead associated with the deployment process beyond just running your build command.
 
 ## Troubleshooting
 
@@ -108,20 +129,26 @@ Fetching details for service srv-abc123xyz...
 Service: my-awesome-app (web)
 Fetching the last 10 deployments for service srv-abc123xyz...
 Retrieved 10 deployments
-┌─────────┬────────────────────────────────┬────────────────┬─────────────────────────┬─────────────────────────┬─────────────────┬──────────────┐
-│ ID      │ Commit                         │ Status         │ Started At              │ Finished At             │ Build Time (min) │ Author       │
-├─────────┼────────────────────────────────┼────────────────┼─────────────────────────┼─────────────────────────┼─────────────────┼──────────────┤
-│ dep-xyz │ Fix TypeScript errors          │ live           │ 3/17/2025, 2:35:15 PM   │ 3/17/2025, 2:38:45 PM   │ 3.50            │ John Doe     │
-├─────────┼────────────────────────────────┼────────────────┼─────────────────────────┼─────────────────────────┼─────────────────┼──────────────┤
-│ dep-abc │ Update dependencies            │ live           │ 3/17/2025, 1:12:30 PM   │ 3/17/2025, 1:15:20 PM   │ 2.83            │ Jane Smith   │
-└─────────┴────────────────────────────────┴────────────────┴─────────────────────────┴─────────────────────────┴─────────────────┴──────────────┘
+Fetching build logs to extract build-only times...
+  Fetching logs for deployment 1/10 (dep-xyz1)...
+  Fetching logs for deployment 2/10 (dep-xyz2)...
+  ... 
+┌─────────┬────────────────────────────────┬────────────────┬─────────────────────────┬─────────────────────────┬──────────────────┬────────────────────┬──────────────┐
+│ ID      │ Commit                         │ Status         │ Started At              │ Finished At             │ Total Time (min) │ Build-Only (min)   │ Author       │
+├─────────┼────────────────────────────────┼────────────────┼─────────────────────────┼─────────────────────────┼──────────────────┼────────────────────┼──────────────┤
+│ dep-xyz │ Fix TypeScript errors          │ live           │ 3/17/2025, 2:35:15 PM   │ 3/17/2025, 2:38:45 PM   │ 3.50             │ 1.25               │ John Doe     │
+├─────────┼────────────────────────────────┼────────────────┼─────────────────────────┼─────────────────────────┼──────────────────┼────────────────────┼──────────────┤
+│ dep-abc │ Update dependencies            │ live           │ 3/17/2025, 1:12:30 PM   │ 3/17/2025, 1:15:20 PM   │ 2.83             │ 1.05               │ Jane Smith   │
+└─────────┴────────────────────────────────┴────────────────┴─────────────────────────┴─────────────────────────┴──────────────────┴────────────────────┴──────────────┘
 
 Deployment Statistics:
 Total Deployments: 10
 Completed Deployments: 10
 Successful Deployments: 8
 Failed Deployments: 2
-Average Build Time: 3.15 minutes
+Average Total Build Time: 3.15 minutes
+Average Build-Only Time: 1.17 minutes
+Average Deployment Overhead: 1.98 minutes
 Max Build Time: 4.28 minutes
 Min Build Time: 2.67 minutes
 ``` 
