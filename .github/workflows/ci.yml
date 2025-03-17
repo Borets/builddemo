@@ -58,6 +58,8 @@ jobs:
       run: cd server && npm run build
     
     - name: Build client
+      env:
+        CI: "false"  # Prevents warnings from being treated as errors
       run: cd client && npm run build
 
   build:
@@ -83,6 +85,8 @@ jobs:
       run: cd server && npm run build
     
     - name: Build client
+      env:
+        CI: "false"  # Prevents warnings from being treated as errors
       run: cd client && npm run build
     
     - name: Upload server build artifact

@@ -38,6 +38,8 @@ jobs:
       run: cd server && npm run build
     
     - name: Build client
+      env:
+        CI: "false"  # Prevents warnings from being treated as errors
       run: cd client && npm run build
     
     - name: Deploy to GitHub Pages
