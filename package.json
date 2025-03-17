@@ -1,34 +1,21 @@
 {
-  "name": "build-performance-evaluation",
+  "name": "build-performance-app",
   "version": "1.0.0",
-  "description": "A system for evaluating build performance across cloud providers",
-  "main": "index.js",
+  "description": "Build Performance Evaluation System",
+  "private": true,
+  "workspaces": [
+    "client",
+    "server"
+  ],
   "scripts": {
-    "install:all": "npm install && npm run install:client && npm run install:server",
     "install:client": "cd client && npm install",
-    "install:server": "cd server && npm install --production=false",
+    "install:server": "cd server && npm install",
     "build:client": "cd client && npm run build",
     "build:server": "cd server && npm run build",
-    "build": "npm run build:server && npm run build:client",
     "start": "cd server && npm start",
-    "dev": "concurrently \"cd server && npm run dev\" \"cd client && npm start\"",
-    "test-build": "node scripts/measure-build.js",
-    "compare-providers": "node scripts/compare-providers.js"
-  },
-  "keywords": [
-    "render",
-    "build",
-    "performance",
-    "cloud",
-    "benchmark"
-  ],
-  "author": "",
-  "license": "MIT",
-  "devDependencies": {
-    "concurrently": "^8.2.2",
-    "dotenv": "^16.3.1"
+    "dev": "cd server && npm run dev"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18"
   }
 } 
