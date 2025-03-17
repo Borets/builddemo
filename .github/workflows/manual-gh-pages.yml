@@ -28,6 +28,9 @@ jobs:
     - name: Install client dependencies
       run: cd client && npm install
     
+    # Note: We're skipping server-side code completely in this workflow,
+    # so no linting or tests are needed
+    
     - name: Show debug info
       if: ${{ github.event.inputs.debug_mode }}
       run: |
