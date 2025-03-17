@@ -1,0 +1,97 @@
+name: Render-like Build
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # Run on pushes to main
+  push:
+    branches: [ main ]
+  # Run on pull request to main
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    env:
+      NODE_ENV: development
+      
+    steps:
+    - name: Record Build Start Time
+      id: build_start
+      run: echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    # Render installs dependencies and builds in one command
+    # Their buildCommand from render.yaml: NODE_ENV=development npm run install:all && npm run build
+    
+    - name: Install All Dependencies
+      run: npm run install:all
+      
+    - name: Record Install End Time
+      run: echo "INSTALL_END_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    - name: Build Application
+      run: npm run build
+      env:
+        # Prevent treating warnings as errors in client build
+        CI: "false"
+        
+    - name: Record Build End Time
+      run: echo "BUILD_END_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    # Render would start the service after a successful build
+    # We can't actually start a service in GitHub Actions, but we can verify it would start
+    
+    - name: Verify Server Can Start
+      run: cd server && node -e "require('./dist/index'); console.log('Server can start successfully');"
+      continue-on-error: true
+      env:
+        NODE_ENV: production
+        PORT: 10000
+        # We don't have a real DATABASE_URL in Actions, but that's okay for this test
+        
+    # Calculate and report build times
+    - name: Report Build Times
+      run: |
+        TOTAL_BUILD_TIME=$((BUILD_END_TIME - BUILD_START_TIME))
+        INSTALL_TIME=$((INSTALL_END_TIME - BUILD_START_TIME))
+        BUILD_ONLY_TIME=$((BUILD_END_TIME - INSTALL_END_TIME))
+        
+        echo "::notice::Total Build Time: $TOTAL_BUILD_TIME seconds"
+        echo "::notice::Dependency Installation: $INSTALL_TIME seconds"
+        echo "::notice::Build Only: $BUILD_ONLY_TIME seconds"
+        
+        # Save build times to an artifact
+        echo "Total Build Time: $TOTAL_BUILD_TIME seconds" > render-like-build-times.txt
+        echo "Dependency Installation: $INSTALL_TIME seconds" >> render-like-build-times.txt
+        echo "Build Only: $BUILD_ONLY_TIME seconds" >> render-like-build-times.txt
+        echo "Cache: With npm caching" >> render-like-build-times.txt
+        
+    # Upload build artifacts
+    - name: Upload Server Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: server-build
+        path: server/dist
+        
+    - name: Upload Client Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: client-build
+        path: client/build
+        
+    - name: Upload Build Time Stats
+      uses: actions/upload-artifact@v4
+      with:
+        name: render-like-build-times
+        path: render-like-build-times.txt 

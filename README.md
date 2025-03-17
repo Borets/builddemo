@@ -74,6 +74,19 @@ This project includes tools for comparing build performance with and without cac
    - Builds without any dependency caching
    - Records build times for comparison
 
+3. **Render-like Build Workflow** (`render-like-build.yml`):
+   - Mimics the build process used by Render.com
+   - Follows the same build command sequence as specified in render.yaml
+   - Uses npm caching to simulate cached builds on Render
+   - Measures total build time, dependency installation time, and build-only time
+   - Useful for local comparison to Render deployment performance
+
+4. **Render-like No-Cache Build Workflow** (`render-like-build-nocache.yml`):
+   - Same as the Render-like workflow but with caching explicitly disabled
+   - Runs on a weekly schedule to provide consistent benchmarks
+   - Explicitly clears npm cache and sets npm_config_cache to 'none'
+   - Useful for comparing to fresh deployments on Render
+
 ### Analysis Tools
 
 Located in the `scripts/` directory:

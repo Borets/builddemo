@@ -38,11 +38,13 @@ GITHUB_REPOSITORY=owner/repo
 
 1. The main workflow (`ci.yml`) runs on push/pull request events.
 2. The no-cache workflow (`ci-nocache.yml`) runs on a schedule or manual trigger.
+3. The Render-like workflow (`render-like-build.yml`) mimics the build process on Render.com with npm caching enabled.
+4. The Render-like no-cache workflow (`render-like-build-nocache.yml`) runs with caching explicitly disabled.
 
-To manually trigger the no-cache workflow:
+To manually trigger any workflow:
 - Go to your GitHub repository
 - Click on "Actions"
-- Select "CI (No Cache)" from the workflows list
+- Select the workflow from the workflows list
 - Click "Run workflow"
 
 ### Downloading Artifacts
@@ -56,7 +58,7 @@ node download-artifacts.js
 Options:
 - `--repo` or `-r`: GitHub repository (owner/repo)
 - `--token` or `-t`: GitHub personal access token
-- `--workflow` or `-w`: Workflow ID or filename (default: "ci.yml,ci-nocache.yml")
+- `--workflow` or `-w`: Workflow ID or filename (default: "ci.yml,ci-nocache.yml,render-like-build.yml,render-like-build-nocache.yml")
 - `--output` or `-o`: Output directory (default: ".")
 - `--latest` or `-l`: Only download artifacts from the latest run of each workflow
 
@@ -88,6 +90,17 @@ The comparison shows:
 - **Build time**: Whether caching affects build performance
 - **Total duration**: Overall time savings from caching
 - **Cache hit information**: Which caches were used during the build
+
+### Render-like Build Metrics
+
+The Render-like build workflows provide:
+
+- **Total Build Time**: Time from the start of the workflow to completion
+- **Dependency Installation**: Time spent installing dependencies
+- **Build Only**: Time spent on the actual build process (excluding installation)
+- **Cache Status**: Indicates whether npm caching was enabled or disabled
+
+These metrics help compare GitHub Actions builds to actual Render.com deployments. The cached version (`render-like-build.yml`) simulates builds with warmed caches on Render, while the uncached version (`render-like-build-nocache.yml`) simulates fresh deployments or builds that invalidate the cache.
 
 ## Tips for Optimizing Caching
 

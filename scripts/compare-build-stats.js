@@ -17,6 +17,8 @@ const DEFAULT_CACHED_STATS = './timing-stats.txt';
 const DEFAULT_UNCACHED_STATS = './timing-stats-nocache.txt';
 const DEFAULT_CACHED_BUILD_STATS = './build-timing-stats.txt';
 const DEFAULT_UNCACHED_BUILD_STATS = './build-timing-stats-nocache.txt';
+const DEFAULT_RENDER_LIKE_STATS = './render-like-build-times.txt';
+const DEFAULT_RENDER_LIKE_NOCACHE_STATS = './render-like-build-times-nocache.txt';
 
 /**
  * Parse timing stats file
@@ -151,6 +153,35 @@ async function main() {
       }
     } else {
       console.log(chalk.yellow('Could not generate build job comparison. Make sure both workflows have completed.'));
+    }
+    
+    // Render-like build stats
+    console.log(chalk.yellow('\nRender-like Build Statistics:'));
+    const renderLikeStats = parseTimingStatsFile(DEFAULT_RENDER_LIKE_STATS);
+    const renderLikeNoCacheStats = parseTimingStatsFile(DEFAULT_RENDER_LIKE_NOCACHE_STATS);
+    
+    if (renderLikeStats && renderLikeNoCacheStats) {
+      // Map fields to match our comparison table format
+      const cachedRenderStats = {
+        'Total duration': renderLikeStats['Total Build Time'] ? parseInt(renderLikeStats['Total Build Time']) : 0,
+        'Installation': renderLikeStats['Dependency Installation'] ? parseInt(renderLikeStats['Dependency Installation']) : 0,
+        'Build': renderLikeStats['Build Only'] ? parseInt(renderLikeStats['Build Only']) : 0
+      };
+      
+      const uncachedRenderStats = {
+        'Total duration': renderLikeNoCacheStats['Total Build Time'] ? parseInt(renderLikeNoCacheStats['Total Build Time']) : 0,
+        'Installation': renderLikeNoCacheStats['Dependency Installation'] ? parseInt(renderLikeNoCacheStats['Dependency Installation']) : 0,
+        'Build': renderLikeNoCacheStats['Build Only'] ? parseInt(renderLikeNoCacheStats['Build Only']) : 0
+      };
+      
+      console.log(generateComparisonTable(cachedRenderStats, uncachedRenderStats));
+      
+      // Cache status info
+      console.log(chalk.blue('Cache Status:'));
+      console.log(`  Cached Build: ${renderLikeStats['Cache'] || 'Unknown'}`);
+      console.log(`  Uncached Build: ${renderLikeNoCacheStats['Cache'] || 'None (uncached build)'}`);
+    } else {
+      console.log(chalk.yellow('Could not generate Render-like build comparison. Make sure both workflows have completed.'));
     }
     
     // Summary

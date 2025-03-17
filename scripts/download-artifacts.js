@@ -25,7 +25,7 @@ program
   .version('1.0.0')
   .option('-r, --repo <repository>', 'GitHub repository in format owner/repo', process.env.GITHUB_REPOSITORY)
   .option('-t, --token <token>', 'GitHub personal access token', process.env.GITHUB_TOKEN)
-  .option('-w, --workflow <id>', 'Workflow ID or filename to download artifacts from', 'ci.yml,ci-nocache.yml')
+  .option('-w, --workflow <id>', 'Workflow ID or filename to download artifacts from', 'ci.yml,ci-nocache.yml,render-like-build.yml,render-like-build-nocache.yml')
   .option('-o, --output <directory>', 'Output directory for downloaded artifacts', '.')
   .option('-l, --latest', 'Only download artifacts from the latest run of each workflow', false)
   .parse(process.argv);
