@@ -6,7 +6,8 @@ services:
     name: build-performance-app
     env: node
     plan: starter
-    buildCommand: npm run install:all && npm run build
+    runtime: node
+    buildCommand: npm install && npm run install:client && npm run install:server && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     envVars:
@@ -18,6 +19,8 @@ services:
         fromDatabase:
           name: build-performance-db
           property: connectionString
+    # Specify Node.js version
+    nodeVersion: 18.x
 
   - type: cron
     name: build-performance-scheduler
@@ -34,6 +37,8 @@ services:
         fromDatabase:
           name: build-performance-db
           property: connectionString
+    # Specify Node.js version
+    nodeVersion: 18.x
 
 databases:
   - name: build-performance-db
