@@ -1,0 +1,18 @@
+{
+  "name": "build-performance-tools",
+  "version": "1.0.0",
+  "description": "Tools for analyzing build performance",
+  "private": true,
+  "scripts": {
+    "compare": "node compare-build-stats.js",
+    "download-artifacts": "node download-artifacts.js"
+  },
+  "dependencies": {
+    "chalk": "^4.1.2",
+    "commander": "^10.0.0",
+    "dotenv": "^16.0.3",
+    "node-fetch": "^3.3.0",
+    "table": "^6.8.1"
+  },
+  "type": "commonjs"
+} 

@@ -16,6 +16,7 @@ This project provides tools to:
 - **Measurement Framework**: Scripts to measure build times and resource usage
 - **Analytics Dashboard**: Web interface to visualize performance data
 - **Render Blueprint**: Configuration for easy deployment on Render
+- **Build Performance Tools**: Scripts to compare cached vs. uncached builds
 
 ## Getting Started
 
@@ -56,6 +57,50 @@ The system consists of:
 2. Build instrumentation that records timing data
 3. A results database that stores performance metrics
 4. An analytics dashboard for visualization
+
+## Build Performance Analysis
+
+This project includes tools for comparing build performance with and without caching:
+
+### GitHub Workflows
+
+1. **Main CI Workflow** (`ci.yml`):
+   - Runs on every push and pull request
+   - Uses GitHub's dependency caching
+   - Records build times and saves them as artifacts
+
+2. **No-Cache Workflow** (`ci-nocache.yml`):
+   - Runs on schedule (weekly) or manual trigger
+   - Builds without any dependency caching
+   - Records build times for comparison
+
+### Analysis Tools
+
+Located in the `scripts/` directory:
+
+1. **Download Artifacts**:
+   ```bash
+   cd scripts
+   npm install
+   node download-artifacts.js
+   ```
+
+2. **Compare Build Performance**:
+   ```bash
+   node compare-build-stats.js
+   ```
+
+3. **All-in-one Analysis**:
+   ```bash
+   ./analyze-build-performance.sh
+   ```
+
+These tools help you:
+- Measure the effectiveness of your caching strategy
+- Identify bottlenecks in your build process
+- Track performance improvements over time
+
+See the [scripts/README.md](scripts/README.md) for detailed documentation.
 
 ## License
 

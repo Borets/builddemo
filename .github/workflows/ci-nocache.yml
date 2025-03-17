@@ -1,0 +1,193 @@
+name: CI (No Cache)
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # Scheduled run (once a week on Monday at 00:00 UTC)
+  schedule:
+    - cron: '0 0 * * 1'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:latest
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: build_performance_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+    - name: Start Timing
+      run: echo "WORKFLOW_START_TIME=$(date +%s)" >> $GITHUB_ENV
+    
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        # No caching specified here
+    
+    - name: Start Install Timing
+      run: echo "INSTALL_START_TIME=$(date +%s)" >> $GITHUB_ENV
+    
+    - name: Install root dependencies
+      run: npm install
+      
+    - name: Install server dependencies
+      run: cd server && npm install
+      
+    - name: Install client dependencies
+      run: cd client && npm install
+    
+    - name: Report Install Timing
+      run: |
+        INSTALL_END_TIME=$(date +%s)
+        INSTALL_DURATION=$((INSTALL_END_TIME - $INSTALL_START_TIME))
+        echo "::notice::Dependency installation took $INSTALL_DURATION seconds"
+        echo "INSTALL_DURATION=$INSTALL_DURATION" >> $GITHUB_ENV
+    
+    - name: Run linting
+      continue-on-error: true  # Make linting errors non-blocking
+      run: cd server && npm run lint
+    
+    - name: Run server tests
+      continue-on-error: true  # Make test failures non-blocking
+      env:
+        DATABASE_URL: postgresql://postgres:postgres@localhost:5432/build_performance_test
+        NODE_ENV: test
+      run: cd server && npm test
+    
+    - name: Run client tests
+      run: cd client && npm test -- --passWithNoTests
+    
+    - name: Start Build Timing
+      run: echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
+    
+    - name: Build server
+      run: cd server && npm run build
+    
+    - name: Build client
+      env:
+        CI: "false"  # Prevents warnings from being treated as errors
+      run: cd client && npm run build
+    
+    - name: Report Build Timing
+      run: |
+        BUILD_END_TIME=$(date +%s)
+        BUILD_DURATION=$((BUILD_END_TIME - $BUILD_START_TIME))
+        echo "::notice::Build process took $BUILD_DURATION seconds"
+        echo "BUILD_DURATION=$BUILD_DURATION" >> $GITHUB_ENV
+    
+    - name: Report Overall Timing
+      run: |
+        WORKFLOW_END_TIME=$(date +%s)
+        WORKFLOW_DURATION=$((WORKFLOW_END_TIME - $WORKFLOW_START_TIME))
+        echo "::notice::Total workflow duration: $WORKFLOW_DURATION seconds"
+        echo "::notice::Installation: $INSTALL_DURATION seconds, Build: $BUILD_DURATION seconds"
+        
+        # Create a file with timing information that can be uploaded as an artifact
+        echo "Total duration: $WORKFLOW_DURATION seconds" > timing-stats-nocache.txt
+        echo "Installation: $INSTALL_DURATION seconds" >> timing-stats-nocache.txt
+        echo "Build: $BUILD_DURATION seconds" >> timing-stats-nocache.txt
+        echo "Cache: None (uncached build)" >> timing-stats-nocache.txt
+        
+    - name: Upload timing stats
+      uses: actions/upload-artifact@v4
+      with:
+        name: timing-stats-nocache
+        path: timing-stats-nocache.txt
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Start Timing
+      run: echo "JOB_START_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    - uses: actions/checkout@v4
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        # No caching specified here
+    
+    - name: Start Install Timing
+      run: echo "INSTALL_START_TIME=$(date +%s)" >> $GITHUB_ENV
+    
+    - name: Install root dependencies
+      run: npm install
+      
+    - name: Install server dependencies
+      run: cd server && npm install
+      
+    - name: Install client dependencies
+      run: cd client && npm install
+    
+    - name: Report Install Timing
+      run: |
+        INSTALL_END_TIME=$(date +%s)
+        INSTALL_DURATION=$((INSTALL_END_TIME - $INSTALL_START_TIME))
+        echo "::notice::Dependency installation took $INSTALL_DURATION seconds"
+        echo "INSTALL_DURATION=$INSTALL_DURATION" >> $GITHUB_ENV
+    
+    - name: Start Build Timing
+      run: echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
+    
+    - name: Build server
+      run: cd server && npm run build
+    
+    - name: Build client
+      env:
+        CI: "false"  # Prevents warnings from being treated as errors
+      run: cd client && npm run build
+    
+    - name: Report Build Timing
+      run: |
+        BUILD_END_TIME=$(date +%s)
+        BUILD_DURATION=$((BUILD_END_TIME - $BUILD_START_TIME))
+        echo "::notice::Build process took $BUILD_DURATION seconds"
+        echo "BUILD_DURATION=$BUILD_DURATION" >> $GITHUB_ENV
+    
+    - name: Upload server build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: server-build-nocache
+        path: server/dist
+    
+    - name: Upload client build artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: client-build-nocache
+        path: client/build
+        
+    - name: Report Overall Timing
+      run: |
+        JOB_END_TIME=$(date +%s)
+        JOB_DURATION=$((JOB_END_TIME - $JOB_START_TIME))
+        echo "::notice::Build job duration: $JOB_DURATION seconds"
+        echo "::notice::Installation: $INSTALL_DURATION seconds, Build: $BUILD_DURATION seconds"
+        
+        # Create a file with timing information that can be uploaded as an artifact
+        echo "Total build job duration: $JOB_DURATION seconds" > build-timing-stats-nocache.txt
+        echo "Installation: $INSTALL_DURATION seconds" >> build-timing-stats-nocache.txt
+        echo "Build: $BUILD_DURATION seconds" >> build-timing-stats-nocache.txt
+        echo "Cache: None (uncached build)" >> build-timing-stats-nocache.txt
+        
+    - name: Upload build timing stats
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-timing-stats-nocache
+        path: build-timing-stats-nocache.txt 
