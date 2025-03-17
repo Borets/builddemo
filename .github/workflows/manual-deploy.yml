@@ -25,6 +25,35 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: '**/package-lock.json'
+    
+    # Cache the root, client and server node_modules separately
+    - name: Cache root dependencies
+      uses: actions/cache@v3
+      id: cache-root
+      with:
+        path: node_modules
+        key: ${{ runner.os }}-node-root-${{ hashFiles('package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-root-
+    
+    - name: Cache client dependencies
+      uses: actions/cache@v3
+      id: cache-client
+      with:
+        path: client/node_modules
+        key: ${{ runner.os }}-node-client-${{ hashFiles('client/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-client-
+    
+    - name: Cache server dependencies
+      uses: actions/cache@v3
+      id: cache-server
+      with:
+        path: server/node_modules
+        key: ${{ runner.os }}-node-server-${{ hashFiles('server/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-server-
     
     - name: Install dependencies
       run: |
@@ -41,6 +70,17 @@ jobs:
       env:
         CI: "false"  # Prevents warnings from being treated as errors
       run: cd client && npm run build
+    
+    # Cache build outputs to speed up future deployments
+    - name: Cache build outputs
+      uses: actions/cache@v3
+      with:
+        path: |
+          server/dist
+          client/build
+        key: ${{ runner.os }}-build-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-build-
     
     - name: Deploy to GitHub Pages
       if: ${{ github.event.inputs.environment == 'gh-pages' || github.event.inputs.environment == 'both' }}

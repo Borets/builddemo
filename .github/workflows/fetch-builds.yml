@@ -19,6 +19,17 @@ jobs:
       with:
         node-version: '18'
         cache: 'npm'
+        cache-dependency-path: 'server/package-lock.json'
+    
+    # Cache server node_modules
+    - name: Cache server dependencies
+      uses: actions/cache@v3
+      id: cache-server
+      with:
+        path: server/node_modules
+        key: ${{ runner.os }}-node-server-${{ hashFiles('server/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-server-
     
     - name: Install server dependencies
       run: cd server && npm install
