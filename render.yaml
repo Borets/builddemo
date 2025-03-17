@@ -37,4 +37,4 @@ services:
 
 databases:
   - name: build-performance-db
-    plan: basic 
+    plan: basic-4gb 
