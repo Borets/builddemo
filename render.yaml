@@ -19,8 +19,6 @@ services:
         fromDatabase:
           name: build-performance-db
           property: connectionString
-    # Specify Node.js version
-    nodeVersion: 18
 
   - type: cron
     name: build-performance-scheduler

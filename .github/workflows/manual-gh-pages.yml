@@ -37,6 +37,7 @@ jobs:
       run: npm install gh-pages --save-dev
     
     - name: Install client dependencies
+      if: steps.cache-client.outputs.cache-hit != 'true'
       run: cd client && npm install
     
     # Note: We're skipping server-side code completely in this workflow,

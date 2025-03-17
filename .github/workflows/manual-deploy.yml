@@ -55,11 +55,17 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-node-server-
     
-    - name: Install dependencies
-      run: |
-        npm install
-        cd server && npm install
-        cd ../client && npm install
+    - name: Install root dependencies
+      if: steps.cache-root.outputs.cache-hit != 'true'
+      run: npm install
+      
+    - name: Install server dependencies
+      if: steps.cache-server.outputs.cache-hit != 'true'
+      run: cd server && npm install
+      
+    - name: Install client dependencies
+      if: steps.cache-client.outputs.cache-hit != 'true'
+      run: cd client && npm install
     
     # Skip linting and tests for server to avoid ESLint errors and test failures
     
