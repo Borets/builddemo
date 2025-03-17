@@ -47,7 +47,6 @@ services:
       - key: GITHUB_PAGES_ENABLED
         value: "false"
     # Specify Node.js version
-    nodeVersion: 18
 
 databases:
   - name: build-performance-db
