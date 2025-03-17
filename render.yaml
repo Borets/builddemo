@@ -20,7 +20,7 @@ services:
           name: build-performance-db
           property: connectionString
     # Specify Node.js version
-    nodeVersion: 18.x
+    nodeVersion: 18
 
   - type: cron
     name: build-performance-scheduler
@@ -49,7 +49,7 @@ services:
       - key: GITHUB_PAGES_ENABLED
         value: "false"
     # Specify Node.js version
-    nodeVersion: 18.x
+    nodeVersion: 18
 
 databases:
   - name: build-performance-db
