@@ -1,4 +1,4 @@
-import { Pool, PoolClient, QueryResult } from 'pg';
+import { Pool } from 'pg';
 
 export interface IBuild {
   id?: number;
@@ -19,9 +19,9 @@ export interface IBuild {
 }
 
 export class Build {
-  private static pool: Pool;
+  private static pool: any;
 
-  static initialize(pool: Pool) {
+  static initialize(pool: any) {
     this.pool = pool;
   }
 

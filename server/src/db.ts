@@ -31,7 +31,7 @@ export const connectDB = async () => {
 };
 
 // Initialize database tables
-async function initializeTables(pool: Pool) {
+async function initializeTables(pool: any) {
   const client = await pool.connect();
   
   try {

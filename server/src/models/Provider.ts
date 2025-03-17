@@ -1,4 +1,4 @@
-import { Pool, PoolClient, QueryResult } from 'pg';
+import { Pool } from 'pg';
 
 export interface IProvider {
   id?: number;
@@ -11,9 +11,9 @@ export interface IProvider {
 }
 
 export class Provider {
-  private static pool: Pool;
+  private static pool: any;
 
-  static initialize(pool: Pool) {
+  static initialize(pool: any) {
     this.pool = pool;
   }
 

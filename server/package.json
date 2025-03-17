@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node dist/index.js",
     "dev": "nodemon --exec ts-node src/index.ts",
-    "build": "npm i --save-dev @types/pg @types/cors @types/morgan && tsc",
+    "build": "npm i --no-save --save-dev @types/pg @types/cors @types/morgan && tsc --skipLibCheck",
     "test": "jest --passWithNoTests",
     "lint": "eslint . --ext .ts",
     "fetch-builds": "ts-node scripts/fetch-builds.ts",
