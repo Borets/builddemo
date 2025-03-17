@@ -37,4 +37,4 @@ services:
 
 databases:
   - name: build-performance-db
-    plan: starter 
+    plan: basic 
