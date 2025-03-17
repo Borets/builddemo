@@ -1,0 +1,56 @@
+name: CD
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    branches: [main]
+    types:
+      - completed
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        npm install
+        cd server && npm install
+        cd ../client && npm install
+    
+    - name: Build server
+      run: cd server && npm run build
+    
+    - name: Build client
+      run: cd client && npm run build
+    
+    # Option 1: Deploy to GitHub Pages (for frontend only)
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./client/build
+        cname: your-custom-domain.com  # Optional: if you have a custom domain
+    
+    # Option 2: Deploy to Render (see below for alternatives)
+    - name: Deploy to Render
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      run: |
+        # curl -X POST "https://api.render.com/v1/services/srv-YOUR_SERVICE_ID/deploys" \
+        # -H "Authorization: Bearer $RENDER_API_KEY" \
+        # -H "Content-Type: application/json"
+        echo "Deployment to Render would happen here. Uncomment the curl command and replace YOUR_SERVICE_ID."
+    
+    # For testing/development purposes
+    - name: Notify deployment status
+      run: echo "Deployment complete!" 

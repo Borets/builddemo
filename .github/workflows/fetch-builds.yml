@@ -1,0 +1,41 @@
+name: Fetch Builds
+
+on:
+  schedule:
+    # Run daily at midnight UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+    # Allow manual triggers
+
+jobs:
+  fetch-builds:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install server dependencies
+      run: cd server && npm install
+    
+    - name: Fetch builds from providers
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        RENDER_ENABLED: ${{ secrets.RENDER_ENABLED }}
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        RENDER_API_ENDPOINT: ${{ secrets.RENDER_API_ENDPOINT }}
+        VERCEL_ENABLED: ${{ secrets.VERCEL_ENABLED }}
+        VERCEL_API_KEY: ${{ secrets.VERCEL_API_KEY }}
+        NETLIFY_ENABLED: ${{ secrets.NETLIFY_ENABLED }}
+        NETLIFY_API_KEY: ${{ secrets.NETLIFY_API_KEY }}
+        AWS_AMPLIFY_ENABLED: ${{ secrets.AWS_AMPLIFY_ENABLED }}
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        GITHUB_PAGES_ENABLED: ${{ secrets.GITHUB_PAGES_ENABLED }}
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      run: cd server && npm run fetch-builds 

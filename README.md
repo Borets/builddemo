@@ -59,4 +59,41 @@ The system consists of:
 
 ## License
 
-MIT 
+MIT
+
+## GitHub Actions Setup
+
+### Database Setup with GitHub Actions
+
+For GitHub Actions to work with your database, you need a managed PostgreSQL instance that's accessible from GitHub's runners.
+
+#### Option 1: Use Render PostgreSQL
+
+1. Create a PostgreSQL database on Render
+2. Add your Render PostgreSQL connection string as a GitHub secret named `DATABASE_URL`
+3. Format: `postgres://username:password@host:port/database_name?ssl=true`
+
+#### Option 2: Use Supabase
+
+1. Create a Supabase project
+2. Get your PostgreSQL connection string from the Supabase dashboard
+3. Add it as a GitHub secret named `DATABASE_URL`
+
+#### Option 3: Use AWS RDS
+
+1. Create an RDS PostgreSQL instance with public access
+2. Configure security groups to allow access from GitHub Actions IP ranges
+3. Add the connection string as a GitHub secret
+
+### Setting Up GitHub Actions Secrets
+
+To run the GitHub Actions workflows, you need to set up the following secrets in your repository:
+
+1. `DATABASE_URL`: Your PostgreSQL connection string
+2. `RENDER_API_KEY`: Your Render API key
+3. `RENDER_ENABLED`: Set to "true" to enable Render provider
+4. `VERCEL_API_KEY`, `NETLIFY_API_KEY`, etc.: API keys for each provider you want to use
+
+## Running Locally
+
+[Add your existing instructions here] 

@@ -63,11 +63,14 @@ const theme = createTheme({
   },
 });
 
-function App() {
+const App = () => {
+  // Use the base URL path for GitHub Pages compatibility
+  const basePath = process.env.NODE_ENV === 'production' ? '/builddemo' : '';
+  
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
+      <Router basename={basePath}>
         <div className="App">
           <Navbar />
           <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -85,6 +88,6 @@ function App() {
       </Router>
     </ThemeProvider>
   );
-}
+};
 
 export default App; 

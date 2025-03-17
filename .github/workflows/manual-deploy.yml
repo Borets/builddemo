@@ -1,0 +1,76 @@
+name: Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'gh-pages'
+        type: choice
+        options:
+          - gh-pages
+          - render
+          - both
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: |
+        npm install
+        cd server && npm install
+        cd ../client && npm install
+    
+    - name: Build server
+      run: cd server && npm run build
+    
+    - name: Build client
+      run: cd client && npm run build
+    
+    - name: Deploy to GitHub Pages
+      if: ${{ github.event.inputs.environment == 'gh-pages' || github.event.inputs.environment == 'both' }}
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: ./client/build
+    
+    - name: Deploy to Render
+      if: ${{ github.event.inputs.environment == 'render' || github.event.inputs.environment == 'both' }}
+      env:
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+        RENDER_SERVICE_ID: ${{ secrets.RENDER_SERVICE_ID }}
+      run: |
+        if [ -n "$RENDER_API_KEY" ] && [ -n "$RENDER_SERVICE_ID" ]; then
+          curl -X POST "https://api.render.com/v1/services/$RENDER_SERVICE_ID/deploys" \
+            -H "Authorization: Bearer $RENDER_API_KEY" \
+            -H "Content-Type: application/json"
+          echo "Deployed to Render successfully!"
+        else
+          echo "Skipping Render deployment - API key or Service ID not configured."
+        fi
+    
+    - name: Run data collection
+      if: ${{ github.event.inputs.environment == 'both' }}
+      env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        RENDER_ENABLED: ${{ secrets.RENDER_ENABLED }}
+        RENDER_API_KEY: ${{ secrets.RENDER_API_KEY }}
+      run: cd server && npm run fetch-builds
+    
+    - name: Deployment summary
+      run: |
+        echo "=== Deployment Summary ==="
+        echo "Deployment target: ${{ github.event.inputs.environment }}"
+        echo "Completed at: $(date)"
+        echo "Triggered by: ${{ github.actor }}" 
