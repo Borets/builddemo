@@ -1,0 +1,17 @@
+{
+  "name": "render-deploy-analyzer",
+  "version": "1.0.0",
+  "description": "Script to analyze Render.com deployments and build times",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "dotenv": "^16.3.1",
+    "chalk": "^5.3.0",
+    "commander": "^11.1.0",
+    "table": "^6.8.1"
+  }
+} 
