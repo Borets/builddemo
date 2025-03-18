@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+*/node_modules/
+**/node_modules/
+/node_modules
+/client/node_modules
+/server/node_modules
+
+# Build outputs
+/dist
+/build
+/client/build
+/client/dist
+/server/dist
+
+# Cache
+.cache/
+.npm
+*/.cache
+**/.cache
+.next/
+
+# Environment variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Testing
+/coverage
+
+# Temporary files
+/tmp
+tmp/ 
