@@ -216,6 +216,35 @@ const extractBuildOnlyTime = (logs) => {
 };
 
 /**
+ * Format time in minutes to a human-readable minutes and seconds format
+ * @param {number|string} minutes - Time in minutes (can be a number or string with number)
+ * @returns {string} - Formatted time string (e.g. "5 min 30 sec")
+ */
+const formatTimeMinSec = (minutes) => {
+  if (minutes === 'N/A' || minutes === null || minutes === undefined) {
+    return 'N/A';
+  }
+  
+  // Convert to number if it's a string
+  const mins = typeof minutes === 'string' ? parseFloat(minutes) : minutes;
+  
+  if (isNaN(mins)) {
+    return 'N/A';
+  }
+  
+  // Calculate minutes and seconds
+  const wholeMins = Math.floor(mins);
+  const secs = Math.round((mins - wholeMins) * 60);
+  
+  // Handle case where seconds round up to 60
+  if (secs === 60) {
+    return `${wholeMins + 1} min 0 sec`;
+  }
+  
+  return `${wholeMins} min ${secs} sec`;
+};
+
+/**
  * Calculate build time from deployment data
  * @param {Object} deploy - Deployment object from Render API
  * @returns {Object} - Object containing build time info
@@ -231,6 +260,7 @@ const calculateBuildTime = (deploy) => {
   if (!createdAt) {
     return {
       buildTimeMinutes: 'N/A',
+      buildTimeFormatted: 'N/A',
       isComplete: !!finishedAt,
       status: deploy.status,
       startTime: deploy.createdAt || 'Unknown',
@@ -247,6 +277,7 @@ const calculateBuildTime = (deploy) => {
   
   return {
     buildTimeMinutes: buildTimeMinutes.toFixed(2),
+    buildTimeFormatted: formatTimeMinSec(buildTimeMinutes),
     isComplete: !!finishedAt,
     status: deploy.status,
     startTime: createdAt.toISOString(),
@@ -339,7 +370,7 @@ const getServiceDetails = async (serviceId) => {
  */
 const formatTableData = (deploys, serviceDetails) => {
   const header = [
-    ['ID', 'Commit', 'Status', 'Started At', 'Finished At', 'Total Time (min)', 'Build-Only (min)', 'Author']
+    ['ID', 'Commit', 'Status', 'Started At', 'Finished At', 'Total Time', 'Build-Only', 'Author']
   ];
   
   const rows = deploys.map(deploy => {
@@ -366,8 +397,9 @@ const formatTableData = (deploys, serviceDetails) => {
     const commitMessage = deploy.commit?.message || 'N/A';
     const commitAuthor = deploy.commit?.author || (deploy.commit ? 'Unknown author' : 'N/A');
     
-    // Get build-only time if available
-    const buildOnlyTime = deploy.buildOnlyTime || 'N/A';
+    // Get build-only time if available and format it
+    const buildOnlyTimeFormatted = deploy.buildOnlyTime ? 
+      formatTimeMinSec(deploy.buildOnlyTime) : 'N/A';
     
     return [
       typeof deployId === 'string' ? deployId.substring(0, 8) : deployId,
@@ -377,8 +409,8 @@ const formatTableData = (deploys, serviceDetails) => {
       buildInfo.status || 'Unknown',
       startDateStr,
       endDateStr,
-      buildInfo.buildTimeMinutes,
-      buildOnlyTime !== 'N/A' ? buildOnlyTime.toFixed(2) : buildOnlyTime,
+      buildInfo.buildTimeFormatted,
+      buildOnlyTimeFormatted,
       commitAuthor
     ];
   });
@@ -407,10 +439,9 @@ const generateReport = (deploys, serviceDetails) => {
       ...deploy,
       buildTimeMinutes: buildInfo.buildTimeMinutes === 'N/A' ? 
         null : parseFloat(buildInfo.buildTimeMinutes),
-      buildTimeFormatted: buildInfo.buildTimeMinutes === 'N/A' ? 
-        'N/A' : buildInfo.buildTimeMinutes + ' min',
+      buildTimeFormatted: buildInfo.buildTimeFormatted || 'N/A',
       buildOnlyTimeFormatted: deploy.buildOnlyTime ? 
-        deploy.buildOnlyTime.toFixed(2) + ' min' : 'N/A',
+        formatTimeMinSec(deploy.buildOnlyTime) : 'N/A',
       isComplete: buildInfo.isComplete
     };
   }).filter(Boolean); // Remove any null entries
@@ -453,8 +484,12 @@ const generateReport = (deploys, serviceDetails) => {
     buildTimeStats: {
       average: avgBuildTime,
       averageBuildOnly: avgBuildOnlyTime,
+      averageFormatted: formatTimeMinSec(avgBuildTime),
+      averageBuildOnlyFormatted: formatTimeMinSec(avgBuildOnlyTime),
       max: maxBuildTime,
+      maxFormatted: formatTimeMinSec(maxBuildTime),
       min: minBuildTime,
+      minFormatted: formatTimeMinSec(minBuildTime),
       unit: 'minutes'
     },
     deploys: deploysWithBuildTimes.map(d => ({
@@ -462,7 +497,9 @@ const generateReport = (deploys, serviceDetails) => {
       createdAt: d.createdAt || null,
       finishedAt: d.finishedAt || null,
       buildTimeMinutes: d.buildTimeMinutes,
+      buildTimeFormatted: d.buildTimeFormatted,
       buildOnlyTime: d.buildOnlyTime || null,
+      buildOnlyTimeFormatted: d.buildOnlyTimeFormatted,
       status: d.status || 'Unknown',
       commitId: d.commit?.id || null,
       commitMessage: d.commit?.message || null,
@@ -539,15 +576,15 @@ const main = async () => {
       console.log(`Completed Deployments: ${report.completedDeploys}`);
       console.log(`Successful Deployments: ${report.successfulDeploys}`);
       console.log(`Failed Deployments: ${report.failedDeploys}`);
-      console.log(`Average Total Build Time: ${report.buildTimeStats.average} minutes`);
+      console.log(`Average Total Build Time: ${report.buildTimeStats.averageFormatted} (${report.buildTimeStats.average} minutes)`);
       if (report.buildTimeStats.averageBuildOnly !== 'N/A') {
-        console.log(`Average Build-Only Time: ${report.buildTimeStats.averageBuildOnly} minutes`);
-        console.log(`Average Deployment Overhead: ${
-          (parseFloat(report.buildTimeStats.average) - parseFloat(report.buildTimeStats.averageBuildOnly)).toFixed(2)
-        } minutes`);
+        console.log(`Average Build-Only Time: ${report.buildTimeStats.averageBuildOnlyFormatted} (${report.buildTimeStats.averageBuildOnly} minutes)`);
+        
+        const overheadMins = parseFloat(report.buildTimeStats.average) - parseFloat(report.buildTimeStats.averageBuildOnly);
+        console.log(`Average Deployment Overhead: ${formatTimeMinSec(overheadMins)} (${overheadMins.toFixed(2)} minutes)`);
       }
-      console.log(`Max Build Time: ${report.buildTimeStats.max} minutes`);
-      console.log(`Min Build Time: ${report.buildTimeStats.min} minutes`);
+      console.log(`Max Build Time: ${report.buildTimeStats.maxFormatted} (${report.buildTimeStats.max} minutes)`);
+      console.log(`Min Build Time: ${report.buildTimeStats.minFormatted} (${report.buildTimeStats.min} minutes)`);
       
       // Save report to file if specified
       if (options.output) {
