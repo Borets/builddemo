@@ -19,6 +19,7 @@ const DEFAULT_CACHED_BUILD_STATS = './build-timing-stats.txt';
 const DEFAULT_UNCACHED_BUILD_STATS = './build-timing-stats-nocache.txt';
 const DEFAULT_RENDER_LIKE_STATS = './render-like-build-times.txt';
 const DEFAULT_RENDER_LIKE_NOCACHE_STATS = './render-like-build-times-nocache.txt';
+const DEFAULT_RENDER_LIKE_FULL_CACHE_STATS = './render-like-build-times-full-cache.txt';
 
 /**
  * Parse timing stats file
@@ -184,6 +185,113 @@ async function main() {
       console.log(chalk.yellow('Could not generate Render-like build comparison. Make sure both workflows have completed.'));
     }
     
+    // Render-like build with full cache details
+    console.log(chalk.yellow('\nRender-like Build with Full Cache Details:'));
+    const renderLikeFullCacheStats = parseTimingStatsFile(DEFAULT_RENDER_LIKE_FULL_CACHE_STATS);
+    
+    if (renderLikeFullCacheStats) {
+      // Display detailed cache stats
+      console.log(chalk.blue('Detailed Caching Statistics:'));
+      
+      // Extract relevant times
+      const totalBuildTime = renderLikeFullCacheStats['Total Build Time'] ? 
+        parseInt(renderLikeFullCacheStats['Total Build Time']) : 0;
+      const cacheResolutionTime = renderLikeFullCacheStats['Cache Resolution Time'] ? 
+        parseInt(renderLikeFullCacheStats['Cache Resolution Time']) : 0;
+      const installTime = renderLikeFullCacheStats['Dependency Installation Time'] ? 
+        parseInt(renderLikeFullCacheStats['Dependency Installation Time']) : 0;
+      const clientBuildTime = renderLikeFullCacheStats['Client Build Time'] ? 
+        parseInt(renderLikeFullCacheStats['Client Build Time']) : 0;
+      const serverBuildTime = renderLikeFullCacheStats['Server Build Time'] ? 
+        parseInt(renderLikeFullCacheStats['Server Build Time']) : 0;
+      const totalInstallTime = renderLikeFullCacheStats['Total Installation Time (Cache + Install)'] ? 
+        parseInt(renderLikeFullCacheStats['Total Installation Time (Cache + Install)']) : 0;
+      const totalBuildOnlyTime = renderLikeFullCacheStats['Total Build-Only Time'] ? 
+        parseInt(renderLikeFullCacheStats['Total Build-Only Time']) : 0;
+      
+      // Create detailed table
+      const detailedHeaders = ['Metric', 'Time (seconds)', 'Percentage of Total'];
+      
+      const detailedRows = [
+        detailedHeaders,
+        ['Total Build Time', `${totalBuildTime}`, '100%'],
+        ['Cache Resolution Time', `${cacheResolutionTime}`, `${((cacheResolutionTime / totalBuildTime) * 100).toFixed(2)}%`],
+        ['Dependency Installation Time', `${installTime}`, `${((installTime / totalBuildTime) * 100).toFixed(2)}%`],
+        ['Client Build Time', `${clientBuildTime}`, `${((clientBuildTime / totalBuildTime) * 100).toFixed(2)}%`],
+        ['Server Build Time', `${serverBuildTime}`, `${((serverBuildTime / totalBuildTime) * 100).toFixed(2)}%`],
+        ['Total Installation Time', `${totalInstallTime}`, `${((totalInstallTime / totalBuildTime) * 100).toFixed(2)}%`],
+        ['Total Build-Only Time', `${totalBuildOnlyTime}`, `${((totalBuildOnlyTime / totalBuildTime) * 100).toFixed(2)}%`]
+      ];
+      
+      console.log(table(detailedRows));
+      
+      // Display cache hit information
+      console.log(chalk.blue('Cache Hit Information:'));
+      console.log(`  Root Dependencies: ${renderLikeFullCacheStats['Cache Hit - Root'] || 'Unknown'}`);
+      console.log(`  Client Dependencies: ${renderLikeFullCacheStats['Cache Hit - Client'] || 'Unknown'}`);
+      console.log(`  Server Dependencies: ${renderLikeFullCacheStats['Cache Hit - Server'] || 'Unknown'}`);
+      
+      // Calculate and display savings
+      console.log(chalk.green('\nCache Efficiency Analysis:'));
+      console.log(`  Installation time is ${((installTime / totalInstallTime) * 100).toFixed(2)}% of total installation time`);
+      console.log(`  Cache resolution time is ${((cacheResolutionTime / totalInstallTime) * 100).toFixed(2)}% of total installation time`);
+      
+      if (installTime < totalInstallTime) {
+        const savedTime = totalInstallTime - installTime;
+        console.log(chalk.green(`  Caching saved approximately ${savedTime} seconds during installation`));
+      } else {
+        console.log(chalk.yellow(`  Caching did not save time during installation`));
+      }
+      
+      // Display advanced caching metrics if available
+      if (renderLikeFullCacheStats && 
+          (renderLikeFullCacheStats['Cache Hit - Client Build'] || 
+           renderLikeFullCacheStats['Cache Hit - Server Build'] || 
+           renderLikeFullCacheStats['Cache Hit - Webpack'] || 
+           renderLikeFullCacheStats['Cache Hit - Repo Assets'])) {
+        
+        console.log(chalk.yellow('\nAdvanced Caching Metrics:'));
+        console.log(chalk.blue('Repository and Build Caching:'));
+        
+        // Display cache hit status for each type of cache
+        const cacheTypes = [
+          { name: 'Client Build Cache', key: 'Cache Hit - Client Build' },
+          { name: 'Server Build Cache', key: 'Cache Hit - Server Build' },
+          { name: 'Webpack Cache', key: 'Cache Hit - Webpack' },
+          { name: 'Repository Assets', key: 'Cache Hit - Repo Assets' }
+        ];
+        
+        let activeAdvancedCaches = 0;
+        
+        cacheTypes.forEach(cacheType => {
+          const status = renderLikeFullCacheStats[cacheType.key] === 'Yes' ? 
+            chalk.green('✓ Hit') : chalk.red('✗ Miss');
+          console.log(`  ${cacheType.name}: ${status}`);
+          
+          if (renderLikeFullCacheStats[cacheType.key] === 'Yes') {
+            activeAdvancedCaches++;
+          }
+        });
+        
+        // Show build time impact analysis
+        console.log(chalk.blue('\nBuild Time Analysis:'));
+        console.log(`  Client Build: ${clientBuildTime} seconds (${((clientBuildTime / totalBuildTime) * 100).toFixed(2)}% of total)`);
+        console.log(`  Server Build: ${serverBuildTime} seconds (${((serverBuildTime / totalBuildTime) * 100).toFixed(2)}% of total)`);
+        
+        if (activeAdvancedCaches > 0) {
+          console.log(chalk.green(`\n${activeAdvancedCaches} active advanced caches helping with build performance`));
+          
+          if (renderLikeFullCacheStats['Build Cache Effectiveness']) {
+            console.log(chalk.green(`  ${renderLikeFullCacheStats['Build Cache Effectiveness']}`));
+          }
+        } else {
+          console.log(chalk.yellow('\nNo advanced caches were used in this build. Consider enabling them for better performance.'));
+        }
+      }
+    } else {
+      console.log(chalk.yellow('Could not find Render-like build with full cache details. Make sure the workflow has completed.'));
+    }
+    
     // Summary
     console.log(chalk.green('\nSummary:'));
     if (cachedTestStats && uncachedTestStats) {
@@ -205,6 +313,8 @@ async function main() {
     console.log('1. If cache savings are minimal, consider optimizing your caching strategy');
     console.log('2. Look at the installation time differences to see the impact of dependency caching');
     console.log('3. Consider running this comparison regularly to track performance changes over time');
+    console.log('4. Enable build and repository caching for even faster builds');
+    console.log('5. Use incremental builds for TypeScript/Webpack when possible');
     
   } catch (error) {
     console.error(chalk.red('Error generating build comparison:'));

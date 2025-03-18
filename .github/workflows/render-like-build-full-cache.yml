@@ -24,6 +24,8 @@ jobs:
       
     - name: Checkout code
       uses: actions/checkout@v4
+      with:
+        fetch-depth: 1  # Shallow clone for faster checkout
       
     # Setup Node.js with explicit cache keys for different parts of the project
     - name: Set up Node.js
@@ -32,6 +34,20 @@ jobs:
         node-version: '18'
         # Don't use the built-in cache option, we'll set up our own explicit caching
         
+    # Cache the git repository itself (focusing on specific files/dirs that rarely change)
+    - name: Cache Repository Assets
+      id: cache-repo-assets
+      uses: actions/cache@v3
+      with:
+        path: |
+          .git
+          client/public
+          client/src/assets
+          server/src/templates
+        key: ${{ runner.os }}-repo-assets-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-repo-assets-
+    
     # Root dependencies cache
     - name: Cache root node_modules
       id: cache-root-deps
@@ -61,7 +77,56 @@ jobs:
         key: ${{ runner.os }}-server-${{ hashFiles('server/package-lock.json') }}
         restore-keys: |
           ${{ runner.os }}-server-
-          
+    
+    # Client build cache for TypeScript compilation
+    - name: Cache client build
+      id: cache-client-build
+      uses: actions/cache@v3
+      with:
+        path: |
+          client/.cache
+          client/node_modules/.cache
+          client/tsconfig.tsbuildinfo
+        key: ${{ runner.os }}-client-build-${{ hashFiles('client/src/**/*.ts', 'client/src/**/*.tsx') }}
+        restore-keys: |
+          ${{ runner.os }}-client-build-
+    
+    # Server build cache for TypeScript compilation
+    - name: Cache server build
+      id: cache-server-build
+      uses: actions/cache@v3
+      with:
+        path: |
+          server/tsconfig.tsbuildinfo
+          server/.tsbuildinfo
+        key: ${{ runner.os }}-server-build-${{ hashFiles('server/src/**/*.ts') }}
+        restore-keys: |
+          ${{ runner.os }}-server-build-
+    
+    # Cache webpack and babel output
+    - name: Cache webpack output
+      id: cache-webpack
+      uses: actions/cache@v3
+      with:
+        path: |
+          client/node_modules/.cache/babel-loader
+          client/node_modules/.cache/webpack
+          client/.webpack-cache
+        key: ${{ runner.os }}-webpack-${{ hashFiles('client/src/**/*.*', 'client/webpack.config.js', 'client/babel.config.js') }}
+        restore-keys: |
+          ${{ runner.os }}-webpack-
+    
+    # Report on cache hits/misses
+    - name: Report Cache Status
+      run: |
+        echo "Root dependencies cache hit: ${{ steps.cache-root-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "Client dependencies cache hit: ${{ steps.cache-client-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "Server dependencies cache hit: ${{ steps.cache-server-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "Client build cache hit: ${{ steps.cache-client-build.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "Server build cache hit: ${{ steps.cache-server-build.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "Webpack cache hit: ${{ steps.cache-webpack.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "Repository assets cache hit: ${{ steps.cache-repo-assets.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+    
     - name: Record Cache End Time
       run: echo "CACHE_END_TIME=$(date +%s)" >> $GITHUB_ENV
     
@@ -86,9 +151,15 @@ jobs:
     - name: Record Install End Time
       run: echo "INSTALL_END_TIME=$(date +%s)" >> $GITHUB_ENV
       
-    # Build the client
+    # Build the client with incremental builds if cache is available
     - name: Build Client
-      run: cd client && npm run build
+      run: |
+        if [ "${{ steps.cache-client-build.outputs.cache-hit }}" == "true" ]; then
+          echo "Using incremental build for client"
+          cd client && npm run build -- --incremental
+        else
+          cd client && npm run build
+        fi
       env:
         # Prevent treating warnings as errors in client build
         CI: "false"
@@ -96,9 +167,15 @@ jobs:
     - name: Record Client Build End Time
       run: echo "CLIENT_BUILD_END_TIME=$(date +%s)" >> $GITHUB_ENV
         
-    # Build the server
+    # Build the server with incremental builds if cache is available
     - name: Build Server
-      run: cd server && npm run build
+      run: |
+        if [ "${{ steps.cache-server-build.outputs.cache-hit }}" == "true" ]; then
+          echo "Using incremental build for server"
+          cd server && npm run build -- --incremental
+        else
+          cd server && npm run build
+        fi
       
     - name: Record Build End Time
       run: echo "BUILD_END_TIME=$(date +%s)" >> $GITHUB_ENV
@@ -126,9 +203,13 @@ jobs:
         TOTAL_BUILD_ONLY_TIME=$((BUILD_END_TIME - INSTALL_END_TIME))
         
         # Display cache hit information
-        echo "::notice::Cache Hit - Root: ${{ steps.cache-root-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
-        echo "::notice::Cache Hit - Client: ${{ steps.cache-client-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
-        echo "::notice::Cache Hit - Server: ${{ steps.cache-server-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "::notice::Cache Hit - Root Dependencies: ${{ steps.cache-root-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "::notice::Cache Hit - Client Dependencies: ${{ steps.cache-client-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "::notice::Cache Hit - Server Dependencies: ${{ steps.cache-server-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "::notice::Cache Hit - Client Build: ${{ steps.cache-client-build.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "::notice::Cache Hit - Server Build: ${{ steps.cache-server-build.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "::notice::Cache Hit - Webpack: ${{ steps.cache-webpack.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
+        echo "::notice::Cache Hit - Repo Assets: ${{ steps.cache-repo-assets.outputs.cache-hit == 'true' && 'Yes' || 'No' }}"
         
         echo "::notice::Total Build Time: $TOTAL_BUILD_TIME seconds"
         echo "::notice::Cache Resolution Time: $CACHE_TIME seconds"
@@ -149,6 +230,22 @@ jobs:
         echo "Cache Hit - Root: ${{ steps.cache-root-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}" >> render-like-build-times-full-cache.txt
         echo "Cache Hit - Client: ${{ steps.cache-client-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}" >> render-like-build-times-full-cache.txt
         echo "Cache Hit - Server: ${{ steps.cache-server-deps.outputs.cache-hit == 'true' && 'Yes' || 'No' }}" >> render-like-build-times-full-cache.txt
+        echo "Cache Hit - Client Build: ${{ steps.cache-client-build.outputs.cache-hit == 'true' && 'Yes' || 'No' }}" >> render-like-build-times-full-cache.txt
+        echo "Cache Hit - Server Build: ${{ steps.cache-server-build.outputs.cache-hit == 'true' && 'Yes' || 'No' }}" >> render-like-build-times-full-cache.txt
+        echo "Cache Hit - Webpack: ${{ steps.cache-webpack.outputs.cache-hit == 'true' && 'Yes' || 'No' }}" >> render-like-build-times-full-cache.txt
+        echo "Cache Hit - Repo Assets: ${{ steps.cache-repo-assets.outputs.cache-hit == 'true' && 'Yes' || 'No' }}" >> render-like-build-times-full-cache.txt
+        
+        # Calculate cache effectiveness metrics
+        if [[ "${{ steps.cache-root-deps.outputs.cache-hit }}" == "true" || "${{ steps.cache-client-deps.outputs.cache-hit }}" == "true" || "${{ steps.cache-server-deps.outputs.cache-hit }}" == "true" ]]; then
+          echo "::notice::Dependency Cache Effectiveness: Saved approximately $INSTALL_TIME seconds"
+          echo "Dependency Cache Effectiveness: Saved approximately $INSTALL_TIME seconds" >> render-like-build-times-full-cache.txt
+        fi
+        
+        # Determine how repository and build caching helped
+        if [[ "${{ steps.cache-client-build.outputs.cache-hit }}" == "true" || "${{ steps.cache-server-build.outputs.cache-hit }}" == "true" || "${{ steps.cache-webpack.outputs.cache-hit }}" == "true" ]]; then
+          echo "::notice::Build Cache Effectiveness: Enabled incremental builds"
+          echo "Build Cache Effectiveness: Enabled incremental builds" >> render-like-build-times-full-cache.txt
+        fi
         
     # Upload build artifacts
     - name: Upload Server Build
