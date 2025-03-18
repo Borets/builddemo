@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../api'; // Changed from axios import to use our configured API client
 import {
   Grid,
   Typography,
@@ -35,11 +35,11 @@ const Dashboard = () => {
     const fetchData = async () => {
       try {
         // Fetch comparison data
-        const comparisonRes = await axios.get('/api/comparisons');
+        const comparisonRes = await api.get('/comparisons');
         setComparisons(comparisonRes.data);
         
         // Fetch recent builds
-        const buildsRes = await axios.get('/api/builds?limit=5');
+        const buildsRes = await api.get('/builds?limit=5');
         setRecentBuilds(buildsRes.data);
         
         setLoading(false);

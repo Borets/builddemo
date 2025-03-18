@@ -64,8 +64,8 @@ const theme = createTheme({
 });
 
 const App = () => {
-  // Use the base URL path for GitHub Pages compatibility
-  const basePath = process.env.NODE_ENV === 'production' ? '/builddemo' : '';
+  // Fix for routing - removing the /builddemo path since app is deployed to root
+  const basePath = '';
   
   return (
     <ThemeProvider theme={theme}>
