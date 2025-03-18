@@ -1,0 +1,403 @@
+name: Build Performance Comparison (M1 vs Standard vs Upgraded x86)
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # Schedule to run once a week (Adjust as needed)
+  schedule:
+    - cron: '0 0 * * 0' # Runs at midnight on Sunday
+
+jobs:
+  build-standard:
+    name: Build on Standard Runner (Ubuntu)
+    runs-on: ubuntu-latest
+    
+    env:
+      NODE_ENV: development
+      
+    steps:
+    - name: Record Build Start Time
+      id: build_start
+      run: echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: System Information
+      run: |
+        echo "CPU Architecture: $(uname -m)"
+        echo "System: $(uname -a)"
+        echo "Node Architecture: $(node -p 'process.arch')"
+        lscpu || echo "CPU info not available"
+        
+    # Install dependencies
+    - name: Install Dependencies
+      run: NODE_ENV=development npm run install:all
+      
+    - name: Record Install End Time
+      run: echo "INSTALL_END_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    # Build client and server
+    - name: Build
+      run: npm run build
+      env:
+        CI: "false"
+      
+    - name: Record Build End Time
+      run: echo "BUILD_END_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    # Report times
+    - name: Report Build Times
+      run: |
+        TOTAL_BUILD_TIME=$((BUILD_END_TIME - BUILD_START_TIME))
+        INSTALL_TIME=$((INSTALL_END_TIME - BUILD_START_TIME))
+        BUILD_ONLY_TIME=$((BUILD_END_TIME - INSTALL_END_TIME))
+        
+        echo "::notice::Platform: Standard Runner (Ubuntu)"
+        echo "::notice::Total Build Time: $TOTAL_BUILD_TIME seconds"
+        echo "::notice::Installation Time: $INSTALL_TIME seconds"
+        echo "::notice::Build-Only Time: $BUILD_ONLY_TIME seconds"
+        
+        # Save build times to an artifact
+        echo "Platform: Standard Runner (Ubuntu)" > build-times-standard.txt
+        echo "Total Build Time: $TOTAL_BUILD_TIME seconds" >> build-times-standard.txt
+        echo "Installation Time: $INSTALL_TIME seconds" >> build-times-standard.txt
+        echo "Build-Only Time: $BUILD_ONLY_TIME seconds" >> build-times-standard.txt
+    
+    - name: Upload Build Time Stats
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-times-standard
+        path: build-times-standard.txt
+
+  build-upgraded-x86:
+    name: Build on Upgraded x86 (Ubuntu Large)
+    runs-on: ubuntu-latest-4-cores
+    
+    env:
+      NODE_ENV: development
+      
+    steps:
+    - name: Record Build Start Time
+      id: build_start
+      run: echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: System Information
+      run: |
+        echo "CPU Architecture: $(uname -m)"
+        echo "System: $(uname -a)"
+        echo "Node Architecture: $(node -p 'process.arch')"
+        lscpu || echo "CPU info not available"
+        echo "CPU Info:"
+        cat /proc/cpuinfo | grep "model name" | head -1
+        echo "Memory Info:"
+        free -h
+        
+    # Install dependencies
+    - name: Install Dependencies
+      run: NODE_ENV=development npm run install:all
+      
+    - name: Record Install End Time
+      run: echo "INSTALL_END_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    # Build client and server
+    - name: Build
+      run: npm run build
+      env:
+        CI: "false"
+      
+    - name: Record Build End Time
+      run: echo "BUILD_END_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    # Report times
+    - name: Report Build Times
+      run: |
+        TOTAL_BUILD_TIME=$((BUILD_END_TIME - BUILD_START_TIME))
+        INSTALL_TIME=$((INSTALL_END_TIME - BUILD_START_TIME))
+        BUILD_ONLY_TIME=$((BUILD_END_TIME - INSTALL_END_TIME))
+        
+        echo "::notice::Platform: Upgraded x86 (Ubuntu Large)"
+        echo "::notice::Total Build Time: $TOTAL_BUILD_TIME seconds"
+        echo "::notice::Installation Time: $INSTALL_TIME seconds"
+        echo "::notice::Build-Only Time: $BUILD_ONLY_TIME seconds"
+        
+        # Save build times to an artifact
+        echo "Platform: Upgraded x86 (Ubuntu Large)" > build-times-upgraded-x86.txt
+        echo "Total Build Time: $TOTAL_BUILD_TIME seconds" >> build-times-upgraded-x86.txt
+        echo "Installation Time: $INSTALL_TIME seconds" >> build-times-upgraded-x86.txt
+        echo "Build-Only Time: $BUILD_ONLY_TIME seconds" >> build-times-upgraded-x86.txt
+    
+    - name: Upload Build Time Stats
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-times-upgraded-x86
+        path: build-times-upgraded-x86.txt
+
+  build-m1:
+    name: Build on M1 (Apple Silicon)
+    runs-on: macos-latest-xlarge
+    
+    env:
+      NODE_ENV: development
+      
+    steps:
+    - name: Record Build Start Time
+      id: build_start
+      run: echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+      
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        
+    - name: System Information
+      run: |
+        echo "CPU Architecture: $(uname -m)"
+        echo "System: $(uname -a)"
+        echo "Node Architecture: $(node -p 'process.arch')"
+        sysctl -n machdep.cpu.brand_string || echo "CPU info not available"
+        echo "Memory Info:"
+        sysctl hw.memsize | awk '{print $2/1024/1024/1024 " GB"}'
+        
+    # Install dependencies
+    - name: Install Dependencies
+      run: NODE_ENV=development npm run install:all
+      
+    - name: Record Install End Time
+      run: echo "INSTALL_END_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    # Build client and server
+    - name: Build
+      run: npm run build
+      env:
+        CI: "false"
+      
+    - name: Record Build End Time
+      run: echo "BUILD_END_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    # Report times
+    - name: Report Build Times
+      run: |
+        TOTAL_BUILD_TIME=$((BUILD_END_TIME - BUILD_START_TIME))
+        INSTALL_TIME=$((INSTALL_END_TIME - BUILD_START_TIME))
+        BUILD_ONLY_TIME=$((BUILD_END_TIME - INSTALL_END_TIME))
+        
+        echo "::notice::Platform: Apple Silicon (M1)"
+        echo "::notice::Total Build Time: $TOTAL_BUILD_TIME seconds"
+        echo "::notice::Installation Time: $INSTALL_TIME seconds"
+        echo "::notice::Build-Only Time: $BUILD_ONLY_TIME seconds"
+        
+        # Save build times to an artifact
+        echo "Platform: Apple Silicon (M1)" > build-times-m1.txt
+        echo "Total Build Time: $TOTAL_BUILD_TIME seconds" >> build-times-m1.txt
+        echo "Installation Time: $INSTALL_TIME seconds" >> build-times-m1.txt
+        echo "Build-Only Time: $BUILD_ONLY_TIME seconds" >> build-times-m1.txt
+    
+    - name: Upload Build Time Stats
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-times-m1
+        path: build-times-m1.txt
+
+  compare-results:
+    name: Compare Build Performance
+    needs: [build-standard, build-upgraded-x86, build-m1]
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Download Standard Runner Stats
+      uses: actions/download-artifact@v4
+      with:
+        name: build-times-standard
+        
+    - name: Download Upgraded x86 Stats
+      uses: actions/download-artifact@v4
+      with:
+        name: build-times-upgraded-x86
+        
+    - name: Download M1 Stats
+      uses: actions/download-artifact@v4
+      with:
+        name: build-times-m1
+        
+    - name: Compare Results
+      run: |
+        echo "=== BUILD PERFORMANCE COMPARISON ==="
+        echo "Standard Runner (Ubuntu) Build Times:"
+        cat build-times-standard.txt
+        echo ""
+        echo "Upgraded x86 (Ubuntu Large) Build Times:"
+        cat build-times-upgraded-x86.txt
+        echo ""
+        echo "Apple Silicon (M1) Build Times:"
+        cat build-times-m1.txt
+        echo ""
+        
+        # Extract build times
+        STD_TOTAL=$(grep "Total Build Time" build-times-standard.txt | sed 's/[^0-9]*//g')
+        UPG_TOTAL=$(grep "Total Build Time" build-times-upgraded-x86.txt | sed 's/[^0-9]*//g')
+        M1_TOTAL=$(grep "Total Build Time" build-times-m1.txt | sed 's/[^0-9]*//g')
+        
+        STD_INSTALL=$(grep "Installation Time" build-times-standard.txt | sed 's/[^0-9]*//g')
+        UPG_INSTALL=$(grep "Installation Time" build-times-upgraded-x86.txt | sed 's/[^0-9]*//g')
+        M1_INSTALL=$(grep "Installation Time" build-times-m1.txt | sed 's/[^0-9]*//g')
+        
+        STD_BUILD=$(grep "Build-Only Time" build-times-standard.txt | sed 's/[^0-9]*//g')
+        UPG_BUILD=$(grep "Build-Only Time" build-times-upgraded-x86.txt | sed 's/[^0-9]*//g')
+        M1_BUILD=$(grep "Build-Only Time" build-times-m1.txt | sed 's/[^0-9]*//g')
+        
+        # Calculate differences vs standard runner
+        M1_VS_STD_TOTAL=$((STD_TOTAL - M1_TOTAL))
+        UPG_VS_STD_TOTAL=$((STD_TOTAL - UPG_TOTAL))
+        
+        M1_VS_STD_INSTALL=$((STD_INSTALL - M1_INSTALL))
+        UPG_VS_STD_INSTALL=$((STD_INSTALL - UPG_INSTALL))
+        
+        M1_VS_STD_BUILD=$((STD_BUILD - M1_BUILD))
+        UPG_VS_STD_BUILD=$((STD_BUILD - UPG_BUILD))
+        
+        # M1 vs Upgraded x86
+        M1_VS_UPG_TOTAL=$((UPG_TOTAL - M1_TOTAL))
+        M1_VS_UPG_INSTALL=$((UPG_INSTALL - M1_INSTALL))
+        M1_VS_UPG_BUILD=$((UPG_BUILD - M1_BUILD))
+        
+        # Calculate percentage improvements vs standard
+        if [ $STD_TOTAL -gt 0 ]; then
+          M1_VS_STD_TOTAL_PCT=$(echo "scale=2; 100 * $M1_VS_STD_TOTAL / $STD_TOTAL" | bc)
+          UPG_VS_STD_TOTAL_PCT=$(echo "scale=2; 100 * $UPG_VS_STD_TOTAL / $STD_TOTAL" | bc)
+        else
+          M1_VS_STD_TOTAL_PCT="N/A"
+          UPG_VS_STD_TOTAL_PCT="N/A"
+        fi
+        
+        if [ $STD_INSTALL -gt 0 ]; then
+          M1_VS_STD_INSTALL_PCT=$(echo "scale=2; 100 * $M1_VS_STD_INSTALL / $STD_INSTALL" | bc)
+          UPG_VS_STD_INSTALL_PCT=$(echo "scale=2; 100 * $UPG_VS_STD_INSTALL / $STD_INSTALL" | bc)
+        else
+          M1_VS_STD_INSTALL_PCT="N/A"
+          UPG_VS_STD_INSTALL_PCT="N/A"
+        fi
+        
+        if [ $STD_BUILD -gt 0 ]; then
+          M1_VS_STD_BUILD_PCT=$(echo "scale=2; 100 * $M1_VS_STD_BUILD / $STD_BUILD" | bc)
+          UPG_VS_STD_BUILD_PCT=$(echo "scale=2; 100 * $UPG_VS_STD_BUILD / $STD_BUILD" | bc)
+        else
+          M1_VS_STD_BUILD_PCT="N/A"
+          UPG_VS_STD_BUILD_PCT="N/A"
+        fi
+        
+        # M1 vs Upgraded x86 percentages
+        if [ $UPG_TOTAL -gt 0 ]; then
+          M1_VS_UPG_TOTAL_PCT=$(echo "scale=2; 100 * $M1_VS_UPG_TOTAL / $UPG_TOTAL" | bc)
+        else
+          M1_VS_UPG_TOTAL_PCT="N/A"
+        fi
+        
+        if [ $UPG_INSTALL -gt 0 ]; then
+          M1_VS_UPG_INSTALL_PCT=$(echo "scale=2; 100 * $M1_VS_UPG_INSTALL / $UPG_INSTALL" | bc)
+        else
+          M1_VS_UPG_INSTALL_PCT="N/A"
+        fi
+        
+        if [ $UPG_BUILD -gt 0 ]; then
+          M1_VS_UPG_BUILD_PCT=$(echo "scale=2; 100 * $M1_VS_UPG_BUILD / $UPG_BUILD" | bc)
+        else
+          M1_VS_UPG_BUILD_PCT="N/A"
+        fi
+        
+        # Report comparisons against standard runner
+        echo "=== STANDARD RUNNER COMPARISON ==="
+        if [ $M1_VS_STD_TOTAL -gt 0 ]; then
+          echo "::notice::M1 vs Standard - Overall: M1 is $M1_VS_STD_TOTAL seconds ($M1_VS_STD_TOTAL_PCT%) faster"
+        elif [ $M1_VS_STD_TOTAL -lt 0 ]; then
+          echo "::notice::M1 vs Standard - Overall: Standard is $((-M1_VS_STD_TOTAL)) seconds ($((-M1_VS_STD_TOTAL_PCT))%) faster"
+        else
+          echo "::notice::M1 vs Standard - Overall: Performance is identical"
+        fi
+        
+        if [ $UPG_VS_STD_TOTAL -gt 0 ]; then
+          echo "::notice::Upgraded x86 vs Standard - Overall: Upgraded x86 is $UPG_VS_STD_TOTAL seconds ($UPG_VS_STD_TOTAL_PCT%) faster"
+        elif [ $UPG_VS_STD_TOTAL -lt 0 ]; then
+          echo "::notice::Upgraded x86 vs Standard - Overall: Standard is $((-UPG_VS_STD_TOTAL)) seconds ($((-UPG_VS_STD_TOTAL_PCT))%) faster"
+        else
+          echo "::notice::Upgraded x86 vs Standard - Overall: Performance is identical"
+        fi
+        
+        # Report M1 vs Upgraded x86
+        echo "=== M1 vs UPGRADED X86 COMPARISON ==="
+        if [ $M1_VS_UPG_TOTAL -gt 0 ]; then
+          echo "::notice::M1 vs Upgraded x86 - Overall: M1 is $M1_VS_UPG_TOTAL seconds ($M1_VS_UPG_TOTAL_PCT%) faster"
+        elif [ $M1_VS_UPG_TOTAL -lt 0 ]; then
+          echo "::notice::M1 vs Upgraded x86 - Overall: Upgraded x86 is $((-M1_VS_UPG_TOTAL)) seconds ($((-M1_VS_UPG_TOTAL_PCT))%) faster"
+        else
+          echo "::notice::M1 vs Upgraded x86 - Overall: Performance is identical"
+        fi
+        
+        # Create a markdown summary
+        echo "# Build Performance Comparison: M1 vs Upgraded x86 vs Standard" > summary.md
+        echo "" >> summary.md
+        echo "| Metric | Standard Runner | Upgraded x86 | M1 (Apple Silicon) | M1 vs Standard | Upgraded x86 vs Standard | M1 vs Upgraded x86 |" >> summary.md
+        echo "|--------|----------------|--------------|---------------------|---------------|--------------------------|---------------------|" >> summary.md
+        echo "| Total Build Time | $STD_TOTAL seconds | $UPG_TOTAL seconds | $M1_TOTAL seconds | $M1_VS_STD_TOTAL_PCT% | $UPG_VS_STD_TOTAL_PCT% | $M1_VS_UPG_TOTAL_PCT% |" >> summary.md
+        echo "| Dependency Installation | $STD_INSTALL seconds | $UPG_INSTALL seconds | $M1_INSTALL seconds | $M1_VS_STD_INSTALL_PCT% | $UPG_VS_STD_INSTALL_PCT% | $M1_VS_UPG_INSTALL_PCT% |" >> summary.md
+        echo "| Build-Only Time | $STD_BUILD seconds | $UPG_BUILD seconds | $M1_BUILD seconds | $M1_VS_STD_BUILD_PCT% | $UPG_VS_STD_BUILD_PCT% | $M1_VS_UPG_BUILD_PCT% |" >> summary.md
+        
+        echo "" >> summary.md
+        echo "## Conclusions" >> summary.md
+        echo "" >> summary.md
+        
+        # Overall winner
+        echo "### Overall Performance" >> summary.md
+        if [ $M1_TOTAL -le $UPG_TOTAL ] && [ $M1_TOTAL -le $STD_TOTAL ]; then
+          echo "**M1 (Apple Silicon)** had the fastest overall build time at $M1_TOTAL seconds." >> summary.md
+        elif [ $UPG_TOTAL -le $M1_TOTAL ] && [ $UPG_TOTAL -le $STD_TOTAL ]; then
+          echo "**Upgraded x86** had the fastest overall build time at $UPG_TOTAL seconds." >> summary.md
+        else
+          echo "**Standard Runner** had the fastest overall build time at $STD_TOTAL seconds." >> summary.md
+        fi
+        
+        # Add detailed comparisons
+        echo "" >> summary.md
+        echo "### Detailed Comparisons" >> summary.md
+        echo "" >> summary.md
+        
+        echo "* **M1 vs Standard Runner**: M1 builds were $M1_VS_STD_TOTAL_PCT% $([ $M1_VS_STD_TOTAL -ge 0 ] && echo "faster" || echo "slower") overall." >> summary.md
+        echo "* **Upgraded x86 vs Standard Runner**: Upgraded x86 builds were $UPG_VS_STD_TOTAL_PCT% $([ $UPG_VS_STD_TOTAL -ge 0 ] && echo "faster" || echo "slower") overall." >> summary.md
+        echo "* **M1 vs Upgraded x86**: M1 builds were $M1_VS_UPG_TOTAL_PCT% $([ $M1_VS_UPG_TOTAL -ge 0 ] && echo "faster" || echo "slower") than upgraded x86 builds." >> summary.md
+        
+        echo "" >> summary.md
+        echo "### Build Phase Analysis" >> summary.md
+        echo "" >> summary.md
+        
+        echo "* **Dependency Installation**: M1 was $M1_VS_STD_INSTALL_PCT% $([ $M1_VS_STD_INSTALL -ge 0 ] && echo "faster" || echo "slower") than standard and $M1_VS_UPG_INSTALL_PCT% $([ $M1_VS_UPG_INSTALL -ge 0 ] && echo "faster" || echo "slower") than upgraded x86." >> summary.md
+        echo "* **Build-Only Phase**: M1 was $M1_VS_STD_BUILD_PCT% $([ $M1_VS_STD_BUILD -ge 0 ] && echo "faster" || echo "slower") than standard and $M1_VS_UPG_BUILD_PCT% $([ $M1_VS_UPG_BUILD -ge 0 ] && echo "faster" || echo "slower") than upgraded x86." >> summary.md
+        
+        cat summary.md
+        
+    - name: Upload Comparison Summary
+      uses: actions/upload-artifact@v4
+      with:
+        name: build-comparison-summary
+        path: summary.md 

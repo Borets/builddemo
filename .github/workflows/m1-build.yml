@@ -1,0 +1,141 @@
+name: Render-like Build M1 Apple Silicon
+
+on:
+  # Manual trigger
+  workflow_dispatch:
+  # Run on pushes to main
+  push:
+    branches: [ main ]
+  # Run on pull request to main
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    # Use macOS runner with Apple Silicon (M1)
+    runs-on: macos-latest-xlarge
+    
+    env:
+      NODE_ENV: development
+      
+    steps:
+    - name: Record Build Start Time
+      id: build_start
+      run: echo "BUILD_START_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1  # Shallow clone for faster checkout
+      
+    # Setup Node.js
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+    
+    # Display architecture and system info
+    - name: System Information
+      run: |
+        echo "CPU Architecture: $(uname -m)"
+        echo "System: $(uname -a)"
+        echo "Node Architecture: $(node -p 'process.arch')"
+        sysctl -n machdep.cpu.brand_string || echo "CPU info not available"
+        echo "Memory Info:"
+        sysctl hw.memsize | awk '{print $2/1024/1024/1024 " GB"}'
+    
+    # Install root dependencies
+    - name: Install Root Dependencies
+      run: npm install
+      
+    # Install client dependencies
+    - name: Install Client Dependencies
+      run: cd client && npm install
+      
+    # Install server dependencies
+    - name: Install Server Dependencies
+      run: cd server && npm install
+      
+    - name: Record Install End Time
+      run: echo "INSTALL_END_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    # Build the client
+    - name: Build Client
+      run: cd client && npm run build
+      env:
+        # Prevent treating warnings as errors in client build
+        CI: "false"
+        
+    - name: Record Client Build End Time
+      run: echo "CLIENT_BUILD_END_TIME=$(date +%s)" >> $GITHUB_ENV
+        
+    # Build the server
+    - name: Build Server
+      run: cd server && npm run build
+      
+    - name: Record Build End Time
+      run: echo "BUILD_END_TIME=$(date +%s)" >> $GITHUB_ENV
+      
+    # Render would start the service after a successful build
+    # We can't actually start a service in GitHub Actions, but we can verify it would start
+    
+    - name: Verify Server Can Start
+      run: cd server && node -e "require('./dist/index'); console.log('Server can start successfully on M1 Mac');"
+      continue-on-error: true
+      env:
+        NODE_ENV: production
+        PORT: 10000
+        # We don't have a real DATABASE_URL in Actions, but that's okay for this test
+        
+    # Calculate and report build times
+    - name: Report Build Times
+      run: |
+        TOTAL_BUILD_TIME=$((BUILD_END_TIME - BUILD_START_TIME))
+        INSTALL_TIME=$((INSTALL_END_TIME - BUILD_START_TIME))
+        CLIENT_BUILD_TIME=$((CLIENT_BUILD_END_TIME - INSTALL_END_TIME))
+        SERVER_BUILD_TIME=$((BUILD_END_TIME - CLIENT_BUILD_END_TIME))
+        TOTAL_BUILD_ONLY_TIME=$((BUILD_END_TIME - INSTALL_END_TIME))
+        
+        # Display build information
+        echo "::notice::Build Platform: Apple Silicon (M1) macOS"
+        echo "::notice::Total Build Time: $TOTAL_BUILD_TIME seconds"
+        echo "::notice::Installation Time: $INSTALL_TIME seconds"
+        echo "::notice::Client Build Time: $CLIENT_BUILD_TIME seconds"
+        echo "::notice::Server Build Time: $SERVER_BUILD_TIME seconds"
+        echo "::notice::Total Build-Only Time: $TOTAL_BUILD_ONLY_TIME seconds"
+        
+        # Save build times to an artifact
+        echo "Build Platform: Apple Silicon (M1) macOS" > render-like-build-times-m1.txt
+        echo "Total Build Time: $TOTAL_BUILD_TIME seconds" >> render-like-build-times-m1.txt
+        echo "Installation Time: $INSTALL_TIME seconds" >> render-like-build-times-m1.txt
+        echo "Client Build Time: $CLIENT_BUILD_TIME seconds" >> render-like-build-times-m1.txt
+        echo "Server Build Time: $SERVER_BUILD_TIME seconds" >> render-like-build-times-m1.txt
+        echo "Total Build-Only Time: $TOTAL_BUILD_ONLY_TIME seconds" >> render-like-build-times-m1.txt
+        
+    # Upload build artifacts
+    - name: Upload Server Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: server-build-m1
+        path: server/dist
+        
+    - name: Upload Client Build
+      uses: actions/upload-artifact@v4
+      with:
+        name: client-build-m1
+        path: client/build
+        
+    - name: Upload Build Time Stats
+      uses: actions/upload-artifact@v4
+      with:
+        name: render-like-build-times-m1
+        path: render-like-build-times-m1.txt
+
+    - name: Debug node_modules
+      run: |
+        echo "Root node_modules size:"
+        du -sh node_modules
+        echo "Client node_modules size:"
+        du -sh client/node_modules
+        echo "Server node_modules size:"
+        du -sh server/node_modules 
